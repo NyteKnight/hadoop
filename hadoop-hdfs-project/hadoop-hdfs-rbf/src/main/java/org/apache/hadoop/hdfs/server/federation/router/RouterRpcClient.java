@@ -494,6 +494,9 @@ public class RouterRpcClient {
         if (this.rpcMonitor != null) {
           this.rpcMonitor.proxyOpComplete(true);
         }
+        if (this.router.getRouterClientMetrics() != null) {
+          this.router.getRouterClientMetrics().incInvokedMethod(method);
+        }
         return ret;
       } catch (IOException ioe) {
         ioes.put(namenode, ioe);
@@ -1378,6 +1381,9 @@ public class RouterRpcClient {
 
     if (rpcMonitor != null) {
       rpcMonitor.proxyOp();
+    }
+    if (this.router.getRouterClientMetrics() != null) {
+      this.router.getRouterClientMetrics().incInvokedConcurrent(m);
     }
 
     acquirePermit(CONCURRENT_NS, ugi, method);
