@@ -1,0 +1,7 @@
+REPOSITORY='hadoop'
+REVIEWBOARD_URL='https://rb.corp.linkedin.com'
+TRACKING_BRANCH='origin/li-3.3'
+BRANCH='li-3.3'
+TARGET_GROUPS='storage-reviewers'
+GUESS_FIELDS='yes'
+OPEN_BROWSER='true'
