@@ -243,7 +243,9 @@
     <module>hadoop-yarn-site</module>
     <module>hadoop-yarn-client</module>
     <module>hadoop-yarn-registry</module>
+<!--
     <module>hadoop-yarn-ui</module>
+-->
     <module>hadoop-yarn-csi</module>
   </modules>
   <!--  -->
