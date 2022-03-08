@@ -334,6 +334,12 @@
         </exclusion>
       </exclusions>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-li-internal</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
 </project>
