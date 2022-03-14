@@ -138,6 +138,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
     <module>hadoop-build-tools</module>
     <module>hadoop-cloud-storage-project</module>
     <module>hadoop-li-internal</module>
+    <module>hadoop-li-internal/hadoop-li-tools</module>
   </modules>
 
   <build>

@@ -27,9 +27,5 @@
   <version>3.3.3-SNAPSHOT</version>
   <description>Apache Hadoop LinkedIn Internal Dependencies</description>
   <name>Apache Hadoop LinkedIn-Internal</name>
-  <packaging>pom</packaging>
-
-  <modules>
-    <module>hadoop-li-tools</module>
-  </modules>
+  <packaging>jar</packaging>
 </project>
