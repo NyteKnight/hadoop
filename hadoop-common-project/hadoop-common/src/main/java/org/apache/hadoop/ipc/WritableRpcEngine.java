@@ -295,7 +295,29 @@ public class WritableRpcEngine implements RpcEngine {
       rpcTimeout, connectionRetryPolicy, null, null);
   }
 
-  /** Construct a client-side proxy object that implements the named protocol,
+  /**
+   * Construct a client-side proxy object with a ConnectionId.
+   *
+   * @param <T> Generics Type T.
+   * @param protocol input protocol.
+   * @param clientVersion input clientVersion.
+   * @param connId input ConnectionId.
+   * @param conf input Configuration.
+   * @param factory input factory.
+   * @throws IOException raised on errors performing I/O.
+   * @return ProtocolProxy.
+   */
+  @Override
+  public <T> ProtocolProxy<T> getProxy(Class<T> protocol, long clientVersion,
+      Client.ConnectionId connId, Configuration conf, SocketFactory factory)
+      throws IOException {
+    return getProxy(protocol, clientVersion, connId.getAddress(),
+        connId.getTicket(), conf, factory, connId.getRpcTimeout(),
+        connId.getRetryPolicy(), null, null);
+  }
+
+  /**
+   * Construct a client-side proxy object that implements the named protocol,
    * talking to a server at the named address. 
    * @param <T>*/
   @Override
@@ -345,7 +367,7 @@ public class WritableRpcEngine implements RpcEngine {
      * @param bindAddress the address to bind on to listen for connection
      * @param port the port to listen for connections on
      * 
-     * @deprecated Use #Server(Class, Object, Configuration, String, int)    
+     * @deprecated Use #Server(Class, Object, Configuration, String, int)
      */
     @Deprecated
     public Server(Object instance, Configuration conf, String bindAddress,
