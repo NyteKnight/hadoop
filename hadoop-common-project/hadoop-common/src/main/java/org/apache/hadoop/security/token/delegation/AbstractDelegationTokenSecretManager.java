@@ -389,7 +389,7 @@ extends AbstractDelegationTokenIdentifier>
    * Update the current master key for generating delegation tokens 
    * It should be called only by tokenRemoverThread.
    */
-  void rollMasterKey() throws IOException {
+  protected void rollMasterKey() throws IOException {
     synchronized (this) {
       removeExpiredKeys();
       /* set final expiry date for retiring currentKey */
