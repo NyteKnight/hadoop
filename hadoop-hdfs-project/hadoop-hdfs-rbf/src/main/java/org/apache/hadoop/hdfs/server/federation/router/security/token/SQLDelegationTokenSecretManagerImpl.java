@@ -1,6 +1,9 @@
 package org.apache.hadoop.hdfs.server.federation.router.security.token;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
@@ -26,6 +29,7 @@ public class SQLDelegationTokenSecretManagerImpl
   private static final String KEY_ID_COUNTER_FIELD = "keyId";
   private static final String KEY_ID_COUNTER_TABLE = "LastDelegationKeyId";
 
+  private final SQLConnectionFactory connectionFactory;
   private final DistributedSQLCounter sequenceNumCounter;
   private final DistributedSQLCounter delegationKeyIdCounter;
 
@@ -37,6 +41,7 @@ public class SQLDelegationTokenSecretManagerImpl
       SQLConnectionFactory connectionFactory) {
     super(conf);
 
+    this.connectionFactory = connectionFactory;
     this.sequenceNumCounter = new DistributedSQLCounter(SEQ_NUM_COUNTER_FIELD,
         SEQ_NUM_COUNTER_TABLE, connectionFactory);
     this.delegationKeyIdCounter = new DistributedSQLCounter(KEY_ID_COUNTER_FIELD,
@@ -54,6 +59,110 @@ public class SQLDelegationTokenSecretManagerImpl
   @Override
   public DelegationTokenIdentifier createIdentifier() {
     return new DelegationTokenIdentifier();
+  }
+
+  @Override
+  protected void insertToken(int sequenceNum, byte[] tokenIdentifier, byte[] tokenInfo)
+      throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+          "INSERT INTO Tokens (sequenceNum, tokenIdentifier, tokenInfo) VALUES (?, ?, ?)")) {
+      statement.setInt(1, sequenceNum);
+      statement.setBytes(2, tokenIdentifier);
+      statement.setBytes(3, tokenInfo);
+      statement.execute();
+      connection.commit();
+    }
+  }
+
+  @Override
+  protected void updateToken(int sequenceNum, byte[] tokenIdentifier, byte[] tokenInfo)
+      throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE Tokens SET tokenInfo = ? WHERE sequenceNum = ? AND tokenIdentifier = ?")) {
+      statement.setBytes(1, tokenInfo);
+      statement.setInt(2, sequenceNum);
+      statement.setBytes(3, tokenIdentifier);
+      statement.execute();
+      connection.commit();
+    }
+  }
+
+  @Override
+  protected void deleteToken(int sequenceNum, byte[] tokenIdentifier) throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "DELETE FROM Tokens WHERE sequenceNum = ? AND tokenIdentifier = ?")) {
+      statement.setInt(1, sequenceNum);
+      statement.setBytes(2, tokenIdentifier);
+      statement.execute();
+      connection.commit();
+    }
+  }
+
+  @Override
+  protected byte[] selectTokenInfo(int sequenceNum, byte[] tokenIdentifier) throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "SELECT tokenInfo FROM Tokens WHERE sequenceNum = ? AND tokenIdentifier = ?")) {
+      statement.setInt(1, sequenceNum);
+      statement.setBytes(2, tokenIdentifier);
+      ResultSet result = statement.executeQuery();
+      if (result.next()) {
+        return result.getBytes("tokenInfo");
+      }
+    }
+    return null;
+  }
+
+  @Override
+  protected void insertDelegationKey(int keyId, byte[] delegationKey) throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "INSERT INTO DelegationKeys (keyId, delegationKey) VALUES (?, ?)")) {
+      statement.setInt(1, keyId);
+      statement.setBytes(2, delegationKey);
+      statement.execute();
+      connection.commit();
+    }
+  }
+
+  @Override
+  protected void updateDelegationKey(int keyId, byte[] delegationKey) throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE DelegationKeys SET delegationKey = ? WHERE keyId = ?")) {
+      statement.setBytes(1, delegationKey);
+      statement.setInt(2, keyId);
+      statement.execute();
+      connection.commit();
+    }
+  }
+
+  @Override
+  protected void deleteDelegationKey(int keyId) throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "DELETE FROM DelegationKeys WHERE keyId = ?")) {
+      statement.setInt(1, keyId);
+      statement.execute();
+      connection.commit();
+    }
+  }
+
+  @Override
+  protected byte[] selectDelegationKey(int keyId) throws SQLException {
+    try (Connection connection = connectionFactory.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "SELECT delegationKey FROM DelegationKeys WHERE keyId = ?")) {
+      statement.setInt(1, keyId);
+      ResultSet result = statement.executeQuery();
+      if (result.next()) {
+        return result.getBytes("delegationKey");
+      }
+    }
+    return null;
   }
 
   @Override

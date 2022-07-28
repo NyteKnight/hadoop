@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -48,6 +48,26 @@ public class TestSQLDelegationTokenSecretManagerImpl {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  @Test
+  public void testSingleSecretManager() throws Exception {
+    DelegationTokenManager tokenManager = createTokenManager();
+
+    Token token = tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
+    validateToken(tokenManager, token, "foo");
+  }
+
+  @Test
+  public void testMultipleSecretManagers() throws Exception {
+    DelegationTokenManager tokenManager1 = createTokenManager();
+    DelegationTokenManager tokenManager2 = createTokenManager();
+
+    Token token1 = tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
+    Token token2 = tokenManager2.createToken(UserGroupInformation.getCurrentUser(), "foo");
+
+    validateToken(tokenManager1, token2, "foo");
+    validateToken(tokenManager2, token1, "foo");
   }
 
   @Test
@@ -96,7 +116,8 @@ public class TestSQLDelegationTokenSecretManagerImpl {
       }
     }
 
-    TestDTSM secretManager = (TestDTSM) tokenManager1.getDelegationTokenSecretManager();
+    SQLDelegationTokenSecretManagerImpl secretManager =
+        (SQLDelegationTokenSecretManagerImpl) tokenManager1.getDelegationTokenSecretManager();
     Assert.assertEquals("Verify that the counter is set to the highest sequence number",
         tokensPerManager * 3, secretManager.getDelegationTokenSeqNum());
   }
@@ -107,7 +128,8 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     Set<Integer> sequenceNums = new HashSet<>();
 
     DelegationTokenManager tokenManager = createTokenManager();
-    TestDTSM secretManager = (TestDTSM) tokenManager.getDelegationTokenSecretManager();
+    SQLDelegationTokenSecretManagerImpl secretManager =
+        (SQLDelegationTokenSecretManagerImpl) tokenManager.getDelegationTokenSecretManager();
     secretManager.setDelegationTokenSeqNum(Integer.MAX_VALUE - tokenBatch);
 
     // Allocate sequence numbers before they are rolled over
@@ -126,10 +148,11 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   @Test
   public void testDelegationKeyAllocation() throws Exception {
     DelegationTokenManager tokenManager1 = createTokenManager();
-    TestDTSM secretManager1 = (TestDTSM) tokenManager1.getDelegationTokenSecretManager();
+    SQLDelegationTokenSecretManagerImpl secretManager1 =
+        (SQLDelegationTokenSecretManagerImpl) tokenManager1.getDelegationTokenSecretManager();
     // Prevent delegation keys to roll for the rest of the test to avoid race conditions
     // between the keys generated and the active keys in the database.
-    secretManager1.stopKeyRoll();
+    ((TestDelegationTokenSecretManager) secretManager1).lockKeyRoll();
     int keyId1 = secretManager1.getCurrentKeyId();
 
     // Validate that latest key1 is assigned to tokenManager1 tokens
@@ -137,9 +160,10 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     validateKeyId(token1, keyId1);
 
     DelegationTokenManager tokenManager2 = createTokenManager();
-    TestDTSM secretManager2 = (TestDTSM) tokenManager2.getDelegationTokenSecretManager();
+    SQLDelegationTokenSecretManagerImpl secretManager2 =
+        (SQLDelegationTokenSecretManagerImpl) tokenManager2.getDelegationTokenSecretManager();
     // Prevent delegation keys to roll for the rest of the test
-    secretManager2.stopKeyRoll();
+    ((TestDelegationTokenSecretManager) secretManager2).lockKeyRoll();
     int keyId2 = secretManager2.getCurrentKeyId();
 
     Assert.assertNotEquals("Each secret manager has its own key", keyId1, keyId2);
@@ -159,7 +183,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
 
   private DelegationTokenManager createTokenManager() {
     DelegationTokenManager tokenManager = new DelegationTokenManager(new Configuration(), null);
-    tokenManager.setExternalDelegationTokenSecretManager(new TestDTSM());
+    tokenManager.setExternalDelegationTokenSecretManager(new TestDelegationTokenSecretManager());
     return tokenManager;
   }
 
@@ -169,6 +193,30 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     Assert.assertFalse("Verify sequence number is unique", sequenceNums.contains(tokenIdentifier.getSequenceNumber()));
 
     sequenceNums.add(tokenIdentifier.getSequenceNumber());
+  }
+
+  private void validateToken(DelegationTokenManager tokenManager, Token token, String renewer) throws Exception {
+    SQLDelegationTokenSecretManagerImpl secretManager =
+        (SQLDelegationTokenSecretManagerImpl) tokenManager.getDelegationTokenSecretManager();
+    AbstractDelegationTokenIdentifier tokenIdentifier = (AbstractDelegationTokenIdentifier) token.decodeIdentifier();
+
+    // Verify token using token manager
+    tokenManager.verifyToken(token);
+
+    byte[] tokenInfo1 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(), tokenIdentifier.getBytes());
+    Assert.assertNotNull("Verify token exists in database", tokenInfo1);
+
+    // Renew token using token manager
+    tokenManager.renewToken(token, renewer);
+
+    byte[] tokenInfo2 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(), tokenIdentifier.getBytes());
+    Assert.assertNotNull("Verify token exists in database", tokenInfo2);
+    Assert.assertFalse("Verify token has been updated in database", Arrays.equals(tokenInfo1, tokenInfo2));
+
+    // Cancel token using token manager
+    tokenManager.cancelToken(token, renewer);
+    byte[] tokenInfo3 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(), tokenIdentifier.getBytes());
+    Assert.assertNull("Verify token was removed from database", tokenInfo3);
   }
 
   private void validateKeyId(Token token, int expectedKeyiD) throws IOException {
@@ -185,6 +233,15 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   }
 
   private static void createTestDBTables() throws SQLException {
+    execute("CREATE TABLE Tokens (sequenceNum INT NOT NULL, "
+        + "tokenIdentifier VARCHAR (255) FOR BIT DATA NOT NULL, "
+        + "tokenInfo VARCHAR (255) FOR BIT DATA NOT NULL, "
+        + "modifiedTime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        + "PRIMARY KEY(sequenceNum))");
+    execute("CREATE TABLE DelegationKeys (keyId INT NOT NULL, "
+        + "delegationKey VARCHAR (255) FOR BIT DATA NOT NULL, "
+        + "modifiedTime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        + "PRIMARY KEY(keyId))");
     execute("CREATE TABLE LastSequenceNum (sequenceNum INT NOT NULL)");
     execute("INSERT INTO LastSequenceNum VALUES (0)");
     execute("CREATE TABLE LastDelegationKeyId (keyId INT NOT NULL)");
@@ -192,6 +249,8 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   }
 
   private static void dropTestDBTables() throws SQLException {
+    execute("DROP TABLE Tokens");
+    execute("DROP TABLE DelegationKeys");
     execute("DROP TABLE LastSequenceNum");
     execute("DROP TABLE LastDelegationKeyId");
   }
@@ -202,26 +261,39 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     }
   }
 
-  static class TestDTSM extends SQLDelegationTokenSecretManagerImpl {
-    private Lock keyRollLock = new ReentrantLock();
+  static class TestDelegationTokenSecretManager extends SQLDelegationTokenSecretManagerImpl {
+    private ReentrantLock keyRollLock;
 
-    public TestDTSM() {
+    private synchronized ReentrantLock getKeyRollLock() {
+      if (keyRollLock == null) {
+        keyRollLock = new ReentrantLock();
+      }
+      return keyRollLock;
+    }
+
+    public TestDelegationTokenSecretManager() {
       super(new Configuration(), new TestConnectionFactory());
     }
 
     // Tests can call this method to prevent delegation keys from
     // being rolled in the middle of a test to prevent race conditions
-    public void stopKeyRoll() {
-      keyRollLock.lock();
+    public void lockKeyRoll() {
+      getKeyRollLock().lock();
+    }
+
+    public void unlockKeyRoll() {
+      if (getKeyRollLock().isHeldByCurrentThread()) {
+        getKeyRollLock().unlock();
+      }
     }
 
     @Override
     protected void rollMasterKey() throws IOException {
       try {
-        keyRollLock.lock();
+        lockKeyRoll();
         super.rollMasterKey();
       } finally {
-        keyRollLock.unlock();
+        unlockKeyRoll();
       }
     }
   }
