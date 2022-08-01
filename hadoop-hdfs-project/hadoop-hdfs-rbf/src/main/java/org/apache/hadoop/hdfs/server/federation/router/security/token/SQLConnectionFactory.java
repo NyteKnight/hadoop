@@ -5,8 +5,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.token.delegation.SQLDelegationTokenSecretManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -14,6 +12,7 @@ import org.slf4j.LoggerFactory;
  */
 public interface SQLConnectionFactory {
   Connection getConnection() throws SQLException;
+  Connection getConnection(boolean autocommit) throws SQLException;
 }
 
 /**
@@ -39,5 +38,12 @@ class MysqlDataSourceConnectionFactory implements SQLConnectionFactory {
   @Override
   public Connection getConnection() throws SQLException {
     return dataSource.getConnection();
+  }
+
+  @Override
+  public Connection getConnection(boolean autocommit) throws SQLException {
+    Connection connection = getConnection();
+    connection.setAutoCommit(autocommit);
+    return connection;
   }
 }

@@ -272,7 +272,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     }
 
     public TestDelegationTokenSecretManager() {
-      super(new Configuration(), new TestConnectionFactory());
+      super(new Configuration(), new TestConnectionFactory(new Configuration()));
     }
 
     // Tests can call this method to prevent delegation keys from
@@ -298,7 +298,11 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     }
   }
 
-  static class TestConnectionFactory implements SQLConnectionFactory {
+  static class TestConnectionFactory extends MysqlDataSourceConnectionFactory {
+    public TestConnectionFactory(Configuration conf) {
+      super(conf);
+    }
+
     @Override
     public Connection getConnection() {
       return getTestDBConnection();

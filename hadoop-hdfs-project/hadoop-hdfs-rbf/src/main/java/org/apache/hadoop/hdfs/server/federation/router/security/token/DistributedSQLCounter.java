@@ -57,7 +57,7 @@ public class DistributedSQLCounter {
    * @param value Value to assign to counter.
    */
   public void updateCounterValue(int value) throws SQLException {
-    try (Connection connection = connectionFactory.getConnection()) {
+    try (Connection connection = connectionFactory.getConnection(true)) {
       updateCounterValue(value, connection);
     }
   }
@@ -73,7 +73,6 @@ public class DistributedSQLCounter {
     try (PreparedStatement statement = connection.prepareStatement(queryText)) {
       statement.setInt(1, value);
       statement.execute();
-      connection.commit();
     }
   }
 
@@ -84,16 +83,14 @@ public class DistributedSQLCounter {
    * @return Previous counter value.
    */
   public int incrementCounterValue(int amount) throws SQLException {
-    try (Connection connection = connectionFactory.getConnection()) {
+    // Disabling auto-commit to ensure that all statements on this transaction
+    // are committed at once.
+    try (Connection connection = connectionFactory.getConnection(false)) {
       // Preventing dirty reads and non-repeatable reads to ensure that the
       // value read will not be updated by a different connection.
       if (connection.getTransactionIsolation() < Connection.TRANSACTION_REPEATABLE_READ) {
         connection.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
       }
-
-      // Disabling auto-commit to ensure that all statements on this transaction
-      // are committed at once.
-      connection.setAutoCommit(false);
 
       try {
         // Reading the counter value "FOR UPDATE" to lock the value record,
@@ -109,6 +106,7 @@ public class DistributedSQLCounter {
         }
 
         updateCounterValue(newValue, connection);
+        connection.commit();
         return lastValue;
       } catch (Exception e) {
         // Rollback transaction to release table locks

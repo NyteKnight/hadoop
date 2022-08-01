@@ -64,40 +64,37 @@ public class SQLDelegationTokenSecretManagerImpl
   @Override
   protected void insertToken(int sequenceNum, byte[] tokenIdentifier, byte[] tokenInfo)
       throws SQLException {
-    try (Connection connection = connectionFactory.getConnection();
+    try (Connection connection = connectionFactory.getConnection(true);
         PreparedStatement statement = connection.prepareStatement(
           "INSERT INTO Tokens (sequenceNum, tokenIdentifier, tokenInfo) VALUES (?, ?, ?)")) {
       statement.setInt(1, sequenceNum);
       statement.setBytes(2, tokenIdentifier);
       statement.setBytes(3, tokenInfo);
       statement.execute();
-      connection.commit();
     }
   }
 
   @Override
   protected void updateToken(int sequenceNum, byte[] tokenIdentifier, byte[] tokenInfo)
       throws SQLException {
-    try (Connection connection = connectionFactory.getConnection();
+    try (Connection connection = connectionFactory.getConnection(true);
         PreparedStatement statement = connection.prepareStatement(
             "UPDATE Tokens SET tokenInfo = ? WHERE sequenceNum = ? AND tokenIdentifier = ?")) {
       statement.setBytes(1, tokenInfo);
       statement.setInt(2, sequenceNum);
       statement.setBytes(3, tokenIdentifier);
       statement.execute();
-      connection.commit();
     }
   }
 
   @Override
   protected void deleteToken(int sequenceNum, byte[] tokenIdentifier) throws SQLException {
-    try (Connection connection = connectionFactory.getConnection();
+    try (Connection connection = connectionFactory.getConnection(true);
         PreparedStatement statement = connection.prepareStatement(
             "DELETE FROM Tokens WHERE sequenceNum = ? AND tokenIdentifier = ?")) {
       statement.setInt(1, sequenceNum);
       statement.setBytes(2, tokenIdentifier);
       statement.execute();
-      connection.commit();
     }
   }
 
@@ -118,36 +115,33 @@ public class SQLDelegationTokenSecretManagerImpl
 
   @Override
   protected void insertDelegationKey(int keyId, byte[] delegationKey) throws SQLException {
-    try (Connection connection = connectionFactory.getConnection();
+    try (Connection connection = connectionFactory.getConnection(true);
         PreparedStatement statement = connection.prepareStatement(
             "INSERT INTO DelegationKeys (keyId, delegationKey) VALUES (?, ?)")) {
       statement.setInt(1, keyId);
       statement.setBytes(2, delegationKey);
       statement.execute();
-      connection.commit();
     }
   }
 
   @Override
   protected void updateDelegationKey(int keyId, byte[] delegationKey) throws SQLException {
-    try (Connection connection = connectionFactory.getConnection();
+    try (Connection connection = connectionFactory.getConnection(true);
         PreparedStatement statement = connection.prepareStatement(
             "UPDATE DelegationKeys SET delegationKey = ? WHERE keyId = ?")) {
       statement.setBytes(1, delegationKey);
       statement.setInt(2, keyId);
       statement.execute();
-      connection.commit();
     }
   }
 
   @Override
   protected void deleteDelegationKey(int keyId) throws SQLException {
-    try (Connection connection = connectionFactory.getConnection();
+    try (Connection connection = connectionFactory.getConnection(true);
         PreparedStatement statement = connection.prepareStatement(
             "DELETE FROM DelegationKeys WHERE keyId = ?")) {
       statement.setInt(1, keyId);
       statement.execute();
-      connection.commit();
     }
   }
 
