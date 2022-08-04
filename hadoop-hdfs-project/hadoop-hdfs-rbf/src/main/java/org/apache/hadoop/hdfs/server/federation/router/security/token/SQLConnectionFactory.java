@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.server.federation.router.security.token;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
+import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import org.apache.hadoop.conf.Configuration;
@@ -11,21 +12,28 @@ import org.apache.hadoop.security.token.delegation.SQLDelegationTokenSecretManag
  * Interface to provide SQL connections to the {@link SQLDelegationTokenSecretManagerImpl}
  */
 public interface SQLConnectionFactory {
+  String CONNECTION_URL = SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX
+      + "connection.url";
+  String CONNECTION_USERNAME = SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX
+      + "connection.username";
+  String CONNECTION_PASSWORD = SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX
+      + "connection.password";
+  String CONNECTION_DRIVER = SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX
+      + "connection.driver";
+
   Connection getConnection() throws SQLException;
-  Connection getConnection(boolean autocommit) throws SQLException;
+
+  default Connection getConnection(boolean autocommit) throws SQLException {
+    Connection connection = getConnection();
+    connection.setAutoCommit(autocommit);
+    return connection;
+  }
 }
 
 /**
  * Class that relies on a MysqlDataSource to provide SQL connections.
  */
 class MysqlDataSourceConnectionFactory implements SQLConnectionFactory {
-  public final static String CONNECTION_URL =
-      SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX + "connection.url";
-  public final static String CONNECTION_USERNAME =
-      SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX + "connection.username";
-  public final static String CONNECTION_PASSWORD =
-      SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX + "connection.password";
-
   private final MysqlDataSource dataSource;
 
   public MysqlDataSourceConnectionFactory(Configuration conf) {
@@ -39,11 +47,24 @@ class MysqlDataSourceConnectionFactory implements SQLConnectionFactory {
   public Connection getConnection() throws SQLException {
     return dataSource.getConnection();
   }
+}
+
+/**
+ * Class that relies on a HikariDataSource to provide SQL connections.
+ */
+class HikariDataSourceConnectionFactory implements SQLConnectionFactory {
+  private final HikariDataSource dataSource;
+
+  public HikariDataSourceConnectionFactory(Configuration conf) {
+    this.dataSource = new HikariDataSource();
+    this.dataSource.setJdbcUrl(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_URL));
+    this.dataSource.setUsername(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_USERNAME));
+    this.dataSource.setPassword(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_PASSWORD));
+    this.dataSource.setDriverClassName(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_DRIVER));
+  }
 
   @Override
-  public Connection getConnection(boolean autocommit) throws SQLException {
-    Connection connection = getConnection();
-    connection.setAutoCommit(autocommit);
-    return connection;
+  public Connection getConnection() throws SQLException {
+    return dataSource.getConnection();
   }
 }

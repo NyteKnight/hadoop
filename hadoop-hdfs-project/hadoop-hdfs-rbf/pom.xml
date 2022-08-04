@@ -40,6 +40,10 @@ https://maven.apache.org/xsd/maven-4.0.0.xsd">
       <version>8.0.29</version>
     </dependency>
     <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP-java7</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derby</artifactId>
       <version>10.10.2.0</version>

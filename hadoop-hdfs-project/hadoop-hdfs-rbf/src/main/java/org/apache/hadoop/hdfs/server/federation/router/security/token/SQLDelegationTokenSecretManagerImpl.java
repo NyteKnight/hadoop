@@ -34,7 +34,7 @@ public class SQLDelegationTokenSecretManagerImpl
   private final DistributedSQLCounter delegationKeyIdCounter;
 
   public SQLDelegationTokenSecretManagerImpl(Configuration conf) {
-    this(conf, new MysqlDataSourceConnectionFactory(conf));
+    this(conf, new HikariDataSourceConnectionFactory(conf));
   }
 
   public SQLDelegationTokenSecretManagerImpl(Configuration conf,
