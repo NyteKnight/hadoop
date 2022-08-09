@@ -57,10 +57,10 @@ class HikariDataSourceConnectionFactory implements SQLConnectionFactory {
 
   public HikariDataSourceConnectionFactory(Configuration conf) {
     this.dataSource = new HikariDataSource();
-    this.dataSource.setJdbcUrl(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_URL));
-    this.dataSource.setUsername(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_USERNAME));
-    this.dataSource.setPassword(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_PASSWORD));
-    this.dataSource.setDriverClassName(conf.get(MysqlDataSourceConnectionFactory.CONNECTION_DRIVER));
+    this.dataSource.setJdbcUrl(conf.get(CONNECTION_URL));
+    this.dataSource.setUsername(conf.get(CONNECTION_USERNAME));
+    this.dataSource.setPassword(conf.get(CONNECTION_PASSWORD));
+    this.dataSource.setDriverClassName(conf.get(CONNECTION_DRIVER));
   }
 
   @Override
