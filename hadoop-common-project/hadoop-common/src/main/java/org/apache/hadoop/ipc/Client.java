@@ -1091,9 +1091,10 @@ public class Client implements AutoCloseable {
         while (!shouldCloseConnection.get()) {
           ResponseBuffer buf = null;
           try {
-            Pair<Call, ResponseBuffer> pair = rpcRequestQueue.take();
-            if (shouldCloseConnection.get()) {
-              return;
+            Pair<Call, ResponseBuffer> pair =
+                rpcRequestQueue.poll(maxIdleTime, TimeUnit.MILLISECONDS);
+            if (pair == null || shouldCloseConnection.get()) {
+              continue;
             }
             buf = pair.getRight();
             synchronized (ipcStreams.out) {
