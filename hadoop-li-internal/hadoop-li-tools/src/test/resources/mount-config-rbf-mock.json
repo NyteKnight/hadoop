@@ -1,0 +1,29 @@
+{
+  "version": "2",
+  "volumes": [
+    {
+      "id": "ns01",
+      "host": "ns01.example.com"
+    },
+    {
+      "id": "ns-fed",
+      "host": "ns-fed.example.com"
+    }
+  ],
+  "mountTables": {
+    "viewFs": {
+      "links": {
+        "/data/databases": {
+          "volume": "ns-fed"
+        },
+        "/tmp": {
+          "volume": "ns01",
+          "path": "/foo/bar"
+        }
+      },
+      "linkFallback": {
+        "volume": "ns01"
+      }
+    }
+  }
+}

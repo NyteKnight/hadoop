@@ -64,6 +64,15 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
         <enabled>false</enabled>
       </snapshots>
     </repository>
+    <!-- LinkedIn Artifactory -->
+    <repository>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>artifactory-release</id>
+      <name>release</name>
+      <url>https://artifactory.corp.linkedin.com:8083/artifactory/release</url>
+    </repository>
   </repositories>
 
   <licenses>
