@@ -18,7 +18,7 @@
                       https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hadoop</groupId>
+    <groupId>com.linkedin.hadoop</groupId>
     <artifactId>hadoop-project</artifactId>
     <version>3.3.3-SNAPSHOT</version>
     <relativePath>../hadoop-project</relativePath>
@@ -52,7 +52,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-annotations</artifactId>
       <scope>provided</scope>
     </dependency>
@@ -183,7 +183,7 @@
                       <destFileName>jdiff.jar</destFileName>
                     </artifactItem>
                     <artifactItem>
-                      <groupId>org.apache.hadoop</groupId>
+                      <groupId>com.linkedin.hadoop</groupId>
                       <artifactId>hadoop-annotations</artifactId>
                       <version>${project.version}</version>
                       <overWrite>false</overWrite>
@@ -379,7 +379,7 @@
             <artifactId>maven-assembly-plugin</artifactId>
             <dependencies>
               <dependency>
-                <groupId>org.apache.hadoop</groupId>
+                <groupId>com.linkedin.hadoop</groupId>
                 <artifactId>hadoop-assemblies</artifactId>
                 <version>${hadoop.version}</version>
               </dependency>
@@ -419,7 +419,7 @@
               <doclet>org.apache.hadoop.classification.tools.ExcludePrivateAnnotationsStandardDoclet</doclet>
               <docletArtifacts>
                 <docletArtifact>
-                  <groupId>org.apache.hadoop</groupId>
+                  <groupId>com.linkedin.hadoop</groupId>
                   <artifactId>hadoop-annotations</artifactId>
                   <version>${hadoop.version}</version>
                 </docletArtifact>

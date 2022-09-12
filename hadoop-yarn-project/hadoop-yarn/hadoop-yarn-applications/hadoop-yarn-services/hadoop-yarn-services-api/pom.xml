@@ -17,7 +17,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hadoop</groupId>
+    <groupId>com.linkedin.hadoop</groupId>
     <artifactId>hadoop-yarn-services</artifactId>
     <version>3.3.3-SNAPSHOT</version>
   </parent>
@@ -84,39 +84,39 @@
   <dependencies>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-services-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-client</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-registry</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-server-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-annotations</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-auth</artifactId>
     </dependency>
     <dependency>
@@ -182,7 +182,7 @@
     <!-- ======================================================== -->
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <type>test-jar</type>
     </dependency>
@@ -192,13 +192,13 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-services-core</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-minicluster</artifactId>
       <scope>test</scope>
     </dependency>
@@ -208,7 +208,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-minikdc</artifactId>
       <scope>test</scope>
     </dependency>

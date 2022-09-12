@@ -17,7 +17,7 @@
           xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hadoop</groupId>
+    <groupId>com.linkedin.hadoop</groupId>
     <artifactId>hadoop-project</artifactId>
     <version>3.3.3-SNAPSHOT</version>
     <relativePath>../../hadoop-project</relativePath>
@@ -35,17 +35,17 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-minicluster</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-rumen</artifactId>
     </dependency>
     <dependency>
@@ -158,7 +158,7 @@
             <artifactId>maven-assembly-plugin</artifactId>
             <dependencies>
               <dependency>
-                <groupId>org.apache.hadoop</groupId>
+                <groupId>com.linkedin.hadoop</groupId>
                 <artifactId>hadoop-assemblies</artifactId>
                 <version>${project.version}</version>
               </dependency>

@@ -16,7 +16,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 <parent>
-   <groupId>org.apache.hadoop</groupId>
+   <groupId>com.linkedin.hadoop</groupId>
    <artifactId>hadoop-project</artifactId>
    <version>3.3.3-SNAPSHOT</version>
    <relativePath>../../hadoop-project</relativePath>
@@ -36,7 +36,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <!-- We list this as optional because as a type-pom it won't get included in the shading.
            Marking it optional means it doesn't count as a transitive dependency of this artifact.
@@ -57,7 +57,7 @@
     <!-- This comes from our parent pom. If we don't expressly change it here to get included,
          downstream will get warnings at compile time. -->
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-annotations</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -100,7 +100,7 @@
             </configuration>
             <dependencies>
               <dependency>
-                <groupId>org.apache.hadoop</groupId>
+                <groupId>com.linkedin.hadoop</groupId>
                 <artifactId>hadoop-maven-plugins</artifactId>
                 <version>${project.version}</version>
               </dependency>
@@ -114,7 +114,7 @@
                 <configuration>
                   <artifactSet>
                     <includes>
-                      <include>org.apache.hadoop:*</include>
+                      <include>com.linkedin.hadoop:*</include>
                     </includes>
                     <excludes>
                       <!-- Leave snappy that includes native methods which cannot be relocated. -->
@@ -124,7 +124,7 @@
                   <filters>
                     <!-- We get these package level classes from various yarn api jars -->
                     <filter>
-                      <artifact>org.apache.hadoop:hadoop-yarn-common</artifact>
+                      <artifact>com.linkedin.hadoop:hadoop-yarn-common</artifact>
                       <excludes>
                         <exclude>org/apache/hadoop/yarn/factories/package-info.class</exclude>
                         <exclude>org/apache/hadoop/yarn/util/package-info.class</exclude>

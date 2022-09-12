@@ -16,7 +16,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hadoop</groupId>
+    <groupId>com.linkedin.hadoop</groupId>
     <artifactId>hadoop-project</artifactId>
     <version>3.3.3-SNAPSHOT</version>
     <relativePath>../../hadoop-project</relativePath>
@@ -39,11 +39,11 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-client-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-client-runtime</artifactId>
     </dependency>
   </dependencies>
@@ -79,7 +79,7 @@
                     <!-- annotations is provided, and both artifacts exclude the tools transitive,
                          but enforcer still sees it.
                     -->
-                    <exclude>org.apache.hadoop:hadoop-annotations</exclude>
+                    <exclude>com.linkedin.hadoop:hadoop-annotations</exclude>
                     <!-- Leave slf4j unshaded so downstream users can configure logging. -->
                     <exclude>org.slf4j:slf4j-api</exclude>
                     <!-- Leave commons-logging unshaded so downstream users can configure logging. -->
@@ -98,7 +98,7 @@
                   <findAllDuplicates>true</findAllDuplicates>
                   <dependencies>
                     <dependency>
-                      <groupId>org.apache.hadoop</groupId>
+                      <groupId>com.linkedin.hadoop</groupId>
                       <artifactId>hadoop-annotations</artifactId>
                       <ignoreClasses>
                         <ignoreClass>*</ignoreClass>

@@ -16,7 +16,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 <parent>
-   <groupId>org.apache.hadoop</groupId>
+   <groupId>com.linkedin.hadoop</groupId>
    <artifactId>hadoop-project</artifactId>
    <version>3.3.3-SNAPSHOT</version>
    <relativePath>../../hadoop-project</relativePath>
@@ -36,7 +36,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <!-- We list this as optional because as a type-pom it won't get included in the shading.
            Marking it optional means it doesn't count as a transitive dependency of this artifact.
@@ -56,7 +56,7 @@
     </dependency>
     <!-- At runtime anyone using us must have the api present -->
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-client-api</artifactId>
       <scope>runtime</scope>
     </dependency>
@@ -69,7 +69,7 @@
     <!-- This comes from our parent pom. If we don't expressly change it here to get included,
          downstream will get warnings at compile time. -->
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-annotations</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -130,7 +130,7 @@
             <artifactId>maven-shade-plugin</artifactId>
             <dependencies>
               <dependency>
-                <groupId>org.apache.hadoop</groupId>
+                <groupId>com.linkedin.hadoop</groupId>
                 <artifactId>hadoop-maven-plugins</artifactId>
                 <version>${project.version}</version>
               </dependency>
@@ -145,7 +145,7 @@
                   <artifactSet>
                     <excludes>
                       <!-- We need a filter that matches just those things that aer included in the api jar -->
-                      <exclude>org.apache.hadoop:hadoop-client-api</exclude>
+                      <exclude>com.linkedin.hadoop:hadoop-client-api</exclude>
                       <!-- Leave slf4j unshaded so downstream users can configure logging. -->
                       <exclude>org.slf4j:slf4j-api</exclude>
                       <!-- Leave commons-logging unshaded so downstream users can configure logging. -->
@@ -169,7 +169,7 @@
                   <filters>
                     <!-- We need a filter that matches just those things that are included in the api jar -->
                     <filter>
-                      <artifact>org.apache.hadoop:*</artifact>
+                      <artifact>com.linkedin.hadoop:*</artifact>
                       <excludes>
                         <exclude>**/*</exclude>
                         <exclude>*</exclude>

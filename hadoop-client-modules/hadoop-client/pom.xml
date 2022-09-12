@@ -16,7 +16,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 <parent>
-   <groupId>org.apache.hadoop</groupId>
+   <groupId>com.linkedin.hadoop</groupId>
    <artifactId>hadoop-project-dist</artifactId>
    <version>3.3.3-SNAPSHOT</version>
    <relativePath>../../hadoop-project-dist</relativePath>
@@ -33,7 +33,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -102,7 +102,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-hdfs-client</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -130,12 +130,12 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-api</artifactId>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-annotations</artifactId>
         </exclusion>
         <exclusion>
@@ -178,7 +178,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-yarn-client</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -186,15 +186,15 @@
         included as direct dependencies. Guava,commons-cli and log4j are
         transitive dependencies -->
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-yarn-api</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-yarn-common</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-annotations</artifactId>
         </exclusion>
         <exclusion>
@@ -238,7 +238,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -267,7 +267,7 @@
           <artifactId>avro</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-annotations</artifactId>
         </exclusion>
         <exclusion>
@@ -291,7 +291,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -304,7 +304,7 @@
           <artifactId>avro</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-annotations</artifactId>
         </exclusion>
         <exclusion>
@@ -324,7 +324,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-annotations</artifactId>
       <scope>compile</scope>
       <exclusions>
@@ -336,7 +336,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>com.linkedin.hadoop</groupId>
       <artifactId>hadoop-li-internal</artifactId>
       <scope>compile</scope>
     </dependency>

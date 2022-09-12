@@ -16,13 +16,13 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.apache.hadoop</groupId>
+  <groupId>com.linkedin.hadoop</groupId>
   <artifactId>hadoop-yarn-applications-catalog-webapp</artifactId>
   <packaging>war</packaging>
 
   <parent>
     <artifactId>hadoop-yarn-applications-catalog</artifactId>
-    <groupId>org.apache.hadoop</groupId>
+    <groupId>com.linkedin.hadoop</groupId>
     <version>3.3.3-SNAPSHOT</version>
   </parent>
 
@@ -176,27 +176,27 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.hadoop</groupId>
+            <groupId>com.linkedin.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.hadoop</groupId>
+            <groupId>com.linkedin.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.hadoop</groupId>
+            <groupId>com.linkedin.hadoop</groupId>
             <artifactId>hadoop-yarn-common</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.hadoop</groupId>
+            <groupId>com.linkedin.hadoop</groupId>
             <artifactId>hadoop-yarn-services-core</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.hadoop</groupId>
+            <groupId>com.linkedin.hadoop</groupId>
             <artifactId>hadoop-yarn-services-api</artifactId>
         </dependency>
 
@@ -445,7 +445,7 @@
         <build>
           <plugins>
             <plugin>
-              <groupId>org.apache.hadoop</groupId>
+              <groupId>com.linkedin.hadoop</groupId>
               <artifactId>hadoop-maven-plugins</artifactId>
               <executions>
                 <execution>

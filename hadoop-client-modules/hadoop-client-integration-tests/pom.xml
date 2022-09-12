@@ -16,7 +16,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hadoop</groupId>
+    <groupId>com.linkedin.hadoop</groupId>
     <artifactId>hadoop-project</artifactId>
     <version>3.3.3-SNAPSHOT</version>
     <relativePath>../../hadoop-project</relativePath>
@@ -66,17 +66,17 @@
       </activation>
       <dependencies>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-client-api</artifactId>
           <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-client-runtime</artifactId>
           <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-client-minicluster</artifactId>
           <scope>test</scope>
         </dependency>
@@ -170,29 +170,29 @@
       </activation>
       <dependencies>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-common</artifactId>
           <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-hdfs-client</artifactId>
           <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-hdfs</artifactId>
           <scope>test</scope>
           <type>test-jar</type>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-yarn-server-tests</artifactId>
           <scope>test</scope>
           <type>test-jar</type>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.linkedin.hadoop</groupId>
           <artifactId>hadoop-common</artifactId>
           <scope>test</scope>
           <type>test-jar</type>
