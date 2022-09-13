@@ -174,26 +174,23 @@ public final class FederationTestUtils {
       final String nsId, final String nnId,
       final FederationNamenodeServiceState state) throws Exception {
 
-    GenericTestUtils.waitFor(new Supplier<Boolean>() {
-      @Override
-      public Boolean get() {
-        try {
-          List<? extends FederationNamenodeContext> namenodes =
-              resolver.getNamenodesForNameserviceId(nsId);
-          if (namenodes != null) {
-            for (FederationNamenodeContext namenode : namenodes) {
-              // Check if this is the Namenode we are checking
-              if (namenode.getNamenodeId() == nnId  ||
-                  namenode.getNamenodeId().equals(nnId)) {
-                return state == null || namenode.getState().equals(state);
-              }
+    GenericTestUtils.waitFor(() -> {
+      try {
+        List<? extends FederationNamenodeContext> namenodes =
+            resolver.getNamenodesForNameserviceId(nsId, false);
+        if (namenodes != null) {
+          for (FederationNamenodeContext namenode : namenodes) {
+            // Check if this is the Namenode we are checking
+            if (namenode.getNamenodeId() == nnId  ||
+                namenode.getNamenodeId().equals(nnId)) {
+              return state == null || namenode.getState().equals(state);
             }
           }
-        } catch (IOException e) {
-          // Ignore
         }
-        return false;
+      } catch (IOException e) {
+        // Ignore
       }
+      return false;
     }, 1000, 60 * 1000);
   }
 
@@ -209,22 +206,19 @@ public final class FederationTestUtils {
       final ActiveNamenodeResolver resolver, final String nsId,
       final FederationNamenodeServiceState state) throws Exception {
 
-    GenericTestUtils.waitFor(new Supplier<Boolean>() {
-      @Override
-      public Boolean get() {
-        try {
-          List<? extends FederationNamenodeContext> nns =
-              resolver.getNamenodesForNameserviceId(nsId);
-          for (FederationNamenodeContext nn : nns) {
-            if (nn.getState().equals(state)) {
-              return true;
-            }
+    GenericTestUtils.waitFor(() -> {
+      try {
+        List<? extends FederationNamenodeContext> nns =
+            resolver.getNamenodesForNameserviceId(nsId, false);
+        for (FederationNamenodeContext nn : nns) {
+          if (nn.getState().equals(state)) {
+            return true;
           }
-        } catch (IOException e) {
-          // Ignore
         }
-        return false;
+      } catch (IOException e) {
+        // Ignore
       }
+      return false;
     }, 1000, 20 * 1000);
   }
 
