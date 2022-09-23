@@ -30,6 +30,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import static org.apache.hadoop.hdfs.tools.federation.MountTableConverter.*;
 import static org.junit.Assert.*;
 
 
@@ -55,10 +56,11 @@ public class TestMountTableConverter {
 
     Configuration routerConf = new Configuration();
     InetSocketAddress routerSocket = router.getAdminServerAddress();
+    // clusterName is null, we use routerSocket to overwrite DFS_ROUTER_ADMIN_ADDRESS_KEY for unit tests.
     routerConf.setSocketAddr(RBFConfigKeys.DFS_ROUTER_ADMIN_ADDRESS_KEY, routerSocket);
     converter =
         new MountTableConverter(routerConf, "hdfs", "/dummy.headless.keytab", new Path("file:///dummy.json"), true,
-            false, "fed");
+            false, "fed", null);
     converter.initClient();
   }
 
@@ -67,6 +69,20 @@ public class TestMountTableConverter {
     dfsCluster.stopRouter(routerContext);
     dfsCluster.shutdown();
     dfsCluster = null;
+  }
+
+  @Test
+  public void testGetRouterAdminAddr() throws IOException {
+    String clusterName = "cluster01";
+    String expectedRouterAdminAddr =
+        String.format(ROUTER_ADMIN_ADDRESS_FORMATTER, clusterName, RBFConfigKeys.DFS_ROUTER_ADMIN_PORT_DEFAULT);
+    MountTableConverter remoteConverter =
+        new MountTableConverter(new Configuration(), "hdfs", "/dummy.headless.keytab", new Path("file:///dummy.json"),
+            true, false, "fed", clusterName);
+
+    remoteConverter.initClient();
+    assertEquals(expectedRouterAdminAddr,
+        remoteConverter.getConf().getTrimmed(RBFConfigKeys.DFS_ROUTER_ADMIN_ADDRESS_KEY));
   }
 
   @Test

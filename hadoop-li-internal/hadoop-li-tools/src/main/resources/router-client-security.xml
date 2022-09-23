@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+  <property>
+    <name>hadoop.security.authentication</name>
+    <value>kerberos</value>
+  </property>
+
+  <property>
+    <name>hadoop.security.authorization</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>hadoop.security.auth_to_local</name>
+    <value>
+      RULE:[1:$1@$0](.*@LINKEDIN.BIZ)s/@.*//
+      RULE:[2:$1@$0](.*@LINKEDIN.BIZ)s/@.*//
+      RULE:[1:$1@$0](.*@PROD.LINKEDIN.COM)s/@.*//
+      RULE:[2:$1@$0](.*@PROD.LINKEDIN.COM)s/@.*//
+      RULE:[1:$1@$0](.*@GRID.LINKEDIN.COM)s/@.*//
+      RULE:[2:$1@$0](.*@GRID.LINKEDIN.COM)s/@.*//
+      DEFAULT
+    </value>
+  </property>
+
+  <property>
+    <name>dfs.federation.router.kerberos.principal</name>
+    <value>hdfs/_HOST@GRID.LINKEDIN.COM</value>
+    <description>Server principle used by RouterAdminProtocolPB</description>
+  </property>
+
+  <property>
+    <name>dfs.federation.router.kerberos.principal.pattern</name>
+    <value>*</value>
+    <description>Pattern to pass SaslRpcClient's check of server's principal from conf against the server's advertised
+      principal
+    </description>
+  </property>
+</configuration>
