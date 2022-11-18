@@ -97,104 +97,6 @@ public class TestRouterState {
     validateRecord(newRecord);
   }
 
-  /**
-   * A mock StateStoreDriver that runs in memory and can cause errors.
-   */
-  public static class MockStateStoreDriver extends StateStoreBaseImpl {
-    boolean giveErrors = false;
-    boolean initialized = false;
-    Map<String, Map<String, BaseRecord>> valueMap = new HashMap<>();
-
-    @Override
-    public boolean initDriver() {
-      initialized = true;
-      return true;
-    }
-
-    @Override
-    public <T extends BaseRecord> boolean initRecordStorage(String className,
-                                                            Class<T> clazz) {
-      return true;
-    }
-
-    @Override
-    public boolean isDriverReady() {
-      return initialized;
-    }
-
-    @Override
-    public void close() throws Exception {
-      valueMap.clear();
-      initialized = false;
-    }
-
-    private void checkErrors() throws IOException {
-      if (giveErrors) {
-        throw new IOException("Induced errors");
-      }
-    }
-
-    @Override
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public <T extends BaseRecord> QueryResult get(Class<T> clazz) throws IOException {
-      checkErrors();
-      Map<String, BaseRecord> map = valueMap.get(StateStoreUtils.getRecordName(clazz));
-      List<BaseRecord> results = map != null
-          ? new ArrayList<>(map.values()) : new ArrayList<>();
-      return new QueryResult<>(results, System.currentTimeMillis());
-    }
-
-    @Override
-    public <T extends BaseRecord> boolean putAll(List<T> records,
-                                                 boolean allowUpdate,
-                                                 boolean errorIfExists)
-        throws IOException {
-      checkErrors();
-      for (T record: records) {
-        Map<String, BaseRecord> map =
-            valueMap.computeIfAbsent(StateStoreUtils.getRecordName(record.getClass()),
-                k -> new HashMap<>());
-        String key = record.getPrimaryKey();
-        BaseRecord oldRecord = map.get(key);
-        if (oldRecord == null || allowUpdate) {
-          map.put(key, record);
-        } else if (errorIfExists) {
-          throw new IOException("Record already exists for " + record.getClass()
-              + ": " + key);
-        }
-      }
-      return true;
-    }
-
-    @Override
-    public <T extends BaseRecord> boolean removeAll(Class<T> clazz) throws IOException {
-      checkErrors();
-      valueMap.remove(StateStoreUtils.getRecordName(clazz));
-      return true;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T extends BaseRecord> int remove(Class<T> clazz,
-                                             Query<T> query)
-        throws IOException {
-      checkErrors();
-      int result = 0;
-      Map<String, BaseRecord> map =
-          valueMap.get(StateStoreUtils.getRecordName(clazz));
-      if (map != null) {
-        for (Iterator<BaseRecord> itr = map.values().iterator(); itr.hasNext(); ) {
-          BaseRecord record = itr.next();
-          if (query.matches((T) record)) {
-            itr.remove();
-            result += 1;
-          }
-        }
-      }
-      return result;
-    }
-  }
-
   @Test
   public void testStateStoreResilience() throws Exception {
     StateStoreService service = new StateStoreService();
@@ -225,8 +127,10 @@ public class TestRouterState {
     assertEquals(2, result.size());
 
     // cause io errors and then reload the cache
-    driver.giveErrors = true;
+    driver.setGiveErrors(true);
+    long previousUpdate = service.getCacheUpdateTime();
     service.refreshCaches(true);
+    assertEquals(previousUpdate, service.getCacheUpdateTime());
 
     // make sure the old cache is still there
     result = resolver.getNamenodesForBlockPoolId("block1");
