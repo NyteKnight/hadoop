@@ -22,6 +22,7 @@ import org.junit.Test;
 
 public class TestSQLDelegationTokenSecretManagerImpl {
   private static final String CONNECTION_URL = "jdbc:derby:memory:TokenStore";
+  private static Configuration CONF;
 
   @Before
   public void init() throws SQLException {
@@ -36,6 +37,12 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   @BeforeClass
   public static void initDatabase() throws SQLException {
     DriverManager.getConnection(CONNECTION_URL + ";create=true");
+
+    CONF = new Configuration();
+    CONF.set(SQLConnectionFactory.CONNECTION_URL, CONNECTION_URL);
+    CONF.set(SQLConnectionFactory.CONNECTION_USERNAME, "testuser");
+    CONF.set(SQLConnectionFactory.CONNECTION_PASSWORD, "testpassword");
+    CONF.set(SQLConnectionFactory.CONNECTION_DRIVER, "org.apache.derby.jdbc.EmbeddedDriver");
   }
 
   @AfterClass
@@ -181,6 +188,21 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     validateKeyId(token2, keyId2);
   }
 
+  @Test
+  public void testHikariConfigs() {
+    int defaultMaximumPoolSize = new HikariDataSourceConnectionFactory(CONF)
+        .getDataSource().getMaximumPoolSize();
+
+    // Changing default maximumPoolSize
+    Configuration conf = new Configuration(CONF);
+    conf.setInt(HikariDataSourceConnectionFactory.HIKARI_PROPS + "maximumPoolSize",
+        defaultMaximumPoolSize + 1);
+
+    // Verifying property is correctly set in datasource
+    Assert.assertEquals(new HikariDataSourceConnectionFactory(conf)
+        .getDataSource().getMaximumPoolSize(), defaultMaximumPoolSize + 1);
+  }
+
   private DelegationTokenManager createTokenManager() {
     DelegationTokenManager tokenManager = new DelegationTokenManager(new Configuration(), null);
     tokenManager.setExternalDelegationTokenSecretManager(new TestDelegationTokenSecretManager());
@@ -272,7 +294,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     }
 
     public TestDelegationTokenSecretManager() {
-      super(new Configuration(), new TestConnectionFactory(new Configuration()));
+      super(CONF, new TestConnectionFactory(CONF));
     }
 
     // Tests can call this method to prevent delegation keys from
@@ -298,14 +320,17 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     }
   }
 
-  static class TestConnectionFactory extends MysqlDataSourceConnectionFactory {
+  static class TestConnectionFactory extends HikariDataSourceConnectionFactory {
     public TestConnectionFactory(Configuration conf) {
       super(conf);
     }
 
     @Override
-    public Connection getConnection() {
-      return getTestDBConnection();
+    public Connection getConnection() throws SQLException {
+      Connection connection = super.getConnection();
+      // Change to default schema as derby driver looks for user schema
+      connection.setSchema("APP");
+      return connection;
     }
   }
 }
