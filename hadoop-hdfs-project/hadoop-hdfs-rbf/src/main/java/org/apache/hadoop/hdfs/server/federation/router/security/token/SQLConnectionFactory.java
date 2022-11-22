@@ -1,9 +1,12 @@
 package org.apache.hadoop.hdfs.server.federation.router.security.token;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Properties;
+import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.token.delegation.SQLDelegationTokenSecretManager;
 
@@ -53,18 +56,31 @@ class MysqlDataSourceConnectionFactory implements SQLConnectionFactory {
  * Class that relies on a HikariDataSource to provide SQL connections.
  */
 class HikariDataSourceConnectionFactory implements SQLConnectionFactory {
+  protected final static String HIKARI_PROPS = SQLDelegationTokenSecretManager.SQL_DTSM_CONF_PREFIX
+      + "connection.hikari.";
   private final HikariDataSource dataSource;
 
   public HikariDataSourceConnectionFactory(Configuration conf) {
-    this.dataSource = new HikariDataSource();
-    this.dataSource.setJdbcUrl(conf.get(CONNECTION_URL));
-    this.dataSource.setUsername(conf.get(CONNECTION_USERNAME));
-    this.dataSource.setPassword(conf.get(CONNECTION_PASSWORD));
-    this.dataSource.setDriverClassName(conf.get(CONNECTION_DRIVER));
+    Properties properties = new Properties();
+    properties.setProperty("jdbcUrl", conf.get(CONNECTION_URL));
+    properties.setProperty("username", conf.get(CONNECTION_USERNAME));
+    properties.setProperty("password", conf.get(CONNECTION_PASSWORD));
+    properties.setProperty("driverClassName", conf.get(CONNECTION_DRIVER));
+
+    // Include hikari connection properties
+    properties.putAll(conf.getPropsWithPrefix(HIKARI_PROPS));
+
+    HikariConfig hikariConfig = new HikariConfig(properties);
+    this.dataSource = new HikariDataSource(hikariConfig);
   }
 
   @Override
   public Connection getConnection() throws SQLException {
     return dataSource.getConnection();
+  }
+
+  @VisibleForTesting
+  HikariDataSource getDataSource() {
+    return dataSource;
   }
 }
