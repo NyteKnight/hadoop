@@ -137,6 +137,7 @@ run copy "${ROOT}/hadoop-hdfs-project/hadoop-hdfs-native-client/target/hadoop-hd
 run copy "${ROOT}/hadoop-hdfs-project/hadoop-hdfs-rbf/target/hadoop-hdfs-rbf-${VERSION}" .
 run copy "${ROOT}/hadoop-yarn-project/target/hadoop-yarn-project-${VERSION}" .
 run copy "${ROOT}/hadoop-mapreduce-project/target/hadoop-mapreduce-${VERSION}" .
+run copy "${ROOT}/hadoop-li-internal/target/hadoop-li-internal-${VERSION}" .
 
 #copy httpfs and kms as is
 run cp -pr "${ROOT}/hadoop-hdfs-project/hadoop-hdfs-httpfs/target/hadoop-hdfs-httpfs-${VERSION}"/* .

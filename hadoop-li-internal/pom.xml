@@ -28,4 +28,19 @@
   <description>Apache Hadoop LinkedIn Internal Dependencies</description>
   <name>Apache Hadoop LinkedIn-Internal</name>
   <packaging>jar</packaging>
+
+  <properties>
+    <hadoop.component>common</hadoop.component>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.linkedin.li-mysql-connector-java</groupId>
+      <artifactId>li-mysql-connector-java</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.linkedin.li-mysql-connector-java</groupId>
+      <artifactId>li-mysql-driver</artifactId>
+    </dependency>
+  </dependencies>
 </project>

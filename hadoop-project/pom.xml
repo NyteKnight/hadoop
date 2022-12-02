@@ -134,6 +134,8 @@
     <jcache.version>1.0-alpha-1</jcache.version>
     <ehcache.version>3.3.1</ehcache.version>
     <hikari.version>2.4.12</hikari.version>
+    <li-mysql-connector-java.version>8.0.27.15</li-mysql-connector-java.version>
+    <li-mysql-driver.version>8.0.27.15</li-mysql-driver.version>
     <mssql.version>6.2.1.jre7</mssql.version>
     <okhttp.version>2.7.5</okhttp.version>
     <jdom.version>1.1</jdom.version>
@@ -1681,6 +1683,16 @@
           <groupId>com.zaxxer</groupId>
           <artifactId>HikariCP-java7</artifactId>
           <version>${hikari.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>com.linkedin.li-mysql-connector-java</groupId>
+          <artifactId>li-mysql-connector-java</artifactId>
+          <version>${li-mysql-connector-java.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>com.linkedin.li-mysql-connector-java</groupId>
+          <artifactId>li-mysql-driver</artifactId>
+          <version>${li-mysql-driver.version}</version>
         </dependency>
         <dependency>
           <groupId>com.microsoft.sqlserver</groupId>

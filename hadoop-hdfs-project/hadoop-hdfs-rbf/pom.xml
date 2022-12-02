@@ -35,9 +35,9 @@ https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <dependencies>
     <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
-      <version>8.0.29</version>
+      <groupId>com.linkedin.li-mysql-connector-java</groupId>
+      <artifactId>li-mysql-connector-java</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.zaxxer</groupId>
