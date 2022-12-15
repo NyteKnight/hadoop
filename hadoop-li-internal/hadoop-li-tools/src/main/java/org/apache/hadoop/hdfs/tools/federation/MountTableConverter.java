@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 public class MountTableConverter extends Configured {
   private static final Logger LOG = LoggerFactory.getLogger(MountTableConverter.class);
   static final String ROUTER_ADMIN_ADDRESS_FORMATTER = "%s-linkfs.grid.linkedin.com:%s";
+  static final String RBF_NS_INDICATOR = "/THIS_IS_LINKFS";
   private final String rbfNsSuffix;
   private final String keytabPrincipal;
   private final String keytabPath;
@@ -338,6 +339,7 @@ public class MountTableConverter extends Configured {
     final int DUMMY_PORT = 9000;
     final String DUMMY_URI = "dummy:///";
     final String CONF_KEY_PREFIX = "fs.viewfs.mounttable." + DUMMY_VIEW + ".link.";
+    final String LINK_FALLBACK_CONF_KEY = "fs.viewfs.mounttable." + DUMMY_VIEW + ".linkFallback";
 
     FileSystem fs = FileSystem.newInstance(mountConfigPath.toUri(), new Configuration());
     InputStream in = fs.open(mountConfigPath);
@@ -347,7 +349,12 @@ public class MountTableConverter extends Configured {
         GridMountTableConfigurationFactory.create(GridMountTableConfiguration.Scheme.HDFS, in);
     gridMountTableConfig.addToConfiguration(output, GridMountTableConfiguration.Scheme.HDFS, DUMMY_PORT, DUMMY_VIEW,
         URI.create(DUMMY_URI));
-    return GridMountTableConfiguration.getValidLinks(output, CONF_KEY_PREFIX);
+
+    URI linkFallBackUri = URI.create(output.get(LINK_FALLBACK_CONF_KEY));
+    Map<String, String> links = GridMountTableConfiguration.getValidLinks(output, CONF_KEY_PREFIX);
+    // Add /THIS_IS_LINKFS -> defaultNs mount point to indicate using RBF
+    links.put(RBF_NS_INDICATOR, linkFallBackUri.toString());
+    return links;
   }
 
   /**

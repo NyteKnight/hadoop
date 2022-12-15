@@ -90,26 +90,17 @@ public class TestMountTableConverter {
     String expectedSrc1 = "/data/databases";
     String expectedSrc2 = "/tmp";
     String mountConfig = "mount-config-mock.json";
-    String mountConfigRbf = "mount-config-rbf-mock.json";
 
     Map<String, String> expectedLinks = new HashMap<String, String>() {{
       put(expectedSrc1, "hdfs://ns02.example.com:9000/data/databases");
       put(expectedSrc2, "hdfs://ns01.example.com:9000/foo/bar");
+      put(RBF_NS_INDICATOR, "hdfs://ns01.example.com:9000/");
     }};
 
     ClassLoader classLoader = this.getClass().getClassLoader();
     Path configPath = new Path(classLoader.getResource(mountConfig).toURI());
     Map<String, String> actualLinks = converter.getLinks(configPath);
     assertEquals(expectedLinks, actualLinks);
-
-    Path configPathRbf = new Path(classLoader.getResource(mountConfigRbf).toURI());
-    Map<String, String> expectedLinksRbf = new HashMap<String, String>() {{
-      put(expectedSrc1, "hdfs://ns-fed.example.com:9000/data/databases");
-      put(expectedSrc2, "hdfs://ns01.example.com:9000/foo/bar");
-    }};
-
-    Map<String, String> actualLinksRbf = converter.getLinks(configPathRbf);
-    assertEquals(expectedLinksRbf, actualLinksRbf);
   }
 
   @Test
@@ -330,6 +321,25 @@ public class TestMountTableConverter {
     GetMountTableEntriesRequest getRequest = GetMountTableEntriesRequest.newInstance(srcPath);
     GetMountTableEntriesResponse getResponse = client.getMountTableManager().getMountTableEntries(getRequest);
     assertEquals(1, getResponse.getEntries().size());
+  }
+
+  @Test
+  public void testRbfIndicator() throws Exception {
+    String mountConfig = "mount-config-mock.json";
+    Map<String, String> destMap = new HashMap<String, String>() {{
+      put("ns01", "/");
+    }};
+
+    Path configPath = new Path(this.getClass().getClassLoader().getResource(mountConfig).toURI());
+    Map<String, String> links = converter.getLinks(configPath);
+    Map<String, Pair<String, String>> mountTableLinks = MountTableConverter.convertLinks(links);
+
+    converter.updateMountTable(converter.getMountTableEntries(), mountTableLinks, true, false);
+    stateStore.loadCache(MountTableStoreImpl.class, true);
+
+    List<MountTable> updatedMountTable = converter.getMountTableEntries();
+    assertEquals(3, updatedMountTable.size());
+    assertTrue(updatedMountTable.contains(MountTable.newInstance(RBF_NS_INDICATOR, destMap)));
   }
 
   private List<MountTable> createTestMountTable() throws IOException {
