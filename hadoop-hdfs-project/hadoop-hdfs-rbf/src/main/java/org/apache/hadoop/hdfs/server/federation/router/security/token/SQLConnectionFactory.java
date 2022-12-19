@@ -25,6 +25,7 @@ public interface SQLConnectionFactory {
       + "connection.driver";
 
   Connection getConnection() throws SQLException;
+  void shutdown();
 
   default Connection getConnection(boolean autocommit) throws SQLException {
     Connection connection = getConnection();
@@ -49,6 +50,11 @@ class MysqlDataSourceConnectionFactory implements SQLConnectionFactory {
   @Override
   public Connection getConnection() throws SQLException {
     return dataSource.getConnection();
+  }
+
+  @Override
+  public void shutdown() {
+    // Nothing to shut down
   }
 }
 
@@ -77,6 +83,12 @@ class HikariDataSourceConnectionFactory implements SQLConnectionFactory {
   @Override
   public Connection getConnection() throws SQLException {
     return dataSource.getConnection();
+  }
+
+  @Override
+  public void shutdown() {
+    // Close database connections
+    dataSource.close();
   }
 
   @VisibleForTesting
