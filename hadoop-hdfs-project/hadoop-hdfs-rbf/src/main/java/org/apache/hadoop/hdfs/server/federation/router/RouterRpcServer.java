@@ -48,6 +48,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.hadoop.thirdparty.com.google.common.cache.CacheLoader;
@@ -400,6 +401,34 @@ public class RouterRpcServer extends AbstractService implements ClientProtocol,
                 .forEach((key) -> this.dnCache.refresh(key)),
             0,
             dnCacheExpire, TimeUnit.MILLISECONDS);
+
+    Executors
+        .newSingleThreadScheduledExecutor()
+        .scheduleWithFixedDelay(this::clearStaleNamespacesInRouterStateIdContext,
+            0,
+            conf.getLong(RBFConfigKeys.FEDERATION_STORE_MEMBERSHIP_EXPIRATION_MS,
+                RBFConfigKeys.FEDERATION_STORE_MEMBERSHIP_EXPIRATION_MS_DEFAULT),
+            TimeUnit.MILLISECONDS);
+  }
+
+  /**
+   * Clear expired namespace in the shared RouterStateIdContext.
+   */
+  private void clearStaleNamespacesInRouterStateIdContext() {
+    try {
+      final Set<String> resolvedNamespaces = namenodeResolver.getNamespaces()
+          .stream()
+          .map(FederationNamespaceInfo::getNameserviceId)
+          .collect(Collectors.toSet());
+
+      routerStateIdContext.getNamespaces().forEach(namespace -> {
+        if (!resolvedNamespaces.contains(namespace)) {
+          routerStateIdContext.removeNamespaceStateId(namespace);
+        }
+      });
+    } catch (IOException e) {
+      LOG.warn("Could not fetch current list of namespaces.", e);
+    }
   }
 
   @Override
