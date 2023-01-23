@@ -58,12 +58,12 @@ import org.slf4j.LoggerFactory;
  */
 public class MountTableConverter extends Configured {
   private static final Logger LOG = LoggerFactory.getLogger(MountTableConverter.class);
-  static final String ROUTER_ADMIN_ADDRESS_FORMATTER = "%s-linkfs.grid.linkedin.com:%s";
+  static final String ROUTER_ADMIN_ADDRESS_FORMATTER = "%s:%s";
   static final String RBF_NS_INDICATOR = "/THIS_IS_LINKFS";
   private final String rbfNsSuffix;
   private final String keytabPrincipal;
   private final String keytabPath;
-  private final String clusterName;
+  private final String routerAddr;
   private final Path mountConfigPath;
   private final boolean dryRun;
   private final boolean removeOld;
@@ -84,7 +84,8 @@ public class MountTableConverter extends Configured {
 
   public static final Option RBF_NAMESPACE_SUFFIX = new Option("rbfNsSuffix", true, "RBF namespace suffix");
 
-  public static final Option CLUSTER_NAME = new Option("cluster", true, "Cluster name used to construct router admin address");
+  public static final Option ROUTER_ADDRESS =
+      new Option("routerAddr", true, "Router RPC address used to construct router admin address");
 
   private static final Options OPTIONS = new Options().addOption(MOUNT_CONFIG_PATH)
       .addOption(KEYTAB_PRINCIPAL)
@@ -92,7 +93,7 @@ public class MountTableConverter extends Configured {
       .addOption(DRY_RUN)
       .addOption(REMOVE_OLD)
       .addOption(RBF_NAMESPACE_SUFFIX)
-      .addOption(CLUSTER_NAME);
+      .addOption(ROUTER_ADDRESS);
 
   public static void main(String[] args) throws Exception {
     Configuration conf = new HdfsConfiguration();
@@ -105,12 +106,13 @@ public class MountTableConverter extends Configured {
       String keytabPath = commandLine.getOptionValue(KEYTAB_PATH.getOpt());
       String rbfNsSuffix = commandLine.getOptionValue(RBF_NAMESPACE_SUFFIX.getOpt());
       Path mountConfigPath = new Path(commandLine.getOptionValue(MOUNT_CONFIG_PATH.getOpt()));
-      String clusterName = commandLine.getOptionValue(CLUSTER_NAME.getOpt());
+      String routerAddr = commandLine.getOptionValue(ROUTER_ADDRESS.getOpt());
       boolean dryRun = commandLine.hasOption(DRY_RUN.getOpt());
       boolean removeOld = commandLine.hasOption(REMOVE_OLD.getOpt());
 
       MountTableConverter adminTool =
-          new MountTableConverter(conf, keytabPrincipal, keytabPath, mountConfigPath, dryRun, removeOld, rbfNsSuffix, clusterName);
+          new MountTableConverter(conf, keytabPrincipal, keytabPath, mountConfigPath, dryRun, removeOld, rbfNsSuffix,
+              routerAddr);
       adminTool.initClient();
       adminTool.convert();
     } catch (ParseException ex) {
@@ -120,7 +122,7 @@ public class MountTableConverter extends Configured {
   }
 
   public MountTableConverter(Configuration conf, String keytabPrincipal, String keytabPath, Path mountConfigPath,
-      boolean dryRun, boolean removeOld, String rbfNsSuffix, String clusterName) {
+      boolean dryRun, boolean removeOld, String rbfNsSuffix, String routerAddr) {
     super(conf);
     this.keytabPrincipal = keytabPrincipal;
     this.keytabPath = keytabPath;
@@ -128,21 +130,20 @@ public class MountTableConverter extends Configured {
     this.dryRun = dryRun;
     this.removeOld = removeOld;
     this.rbfNsSuffix = rbfNsSuffix;
-    this.clusterName = clusterName;
+    this.routerAddr = routerAddr;
   }
 
   public void initClient() throws IOException {
     // Load client's minimum set of configurations to use kerberos
     Configuration.addDefaultResource("router-client-security.xml");
 
-    if (this.clusterName != null) {
-      // If clusterName is null, will fall back to use local configuration DFS_ROUTER_ADMIN_ADDRESS_KEY, if
+    if (this.routerAddr != null) {
+      // If routerAddr is null, will fall back to use local configuration DFS_ROUTER_ADMIN_ADDRESS_KEY, if
       // DFS_ROUTER_ADMIN_ADDRESS_KEY is not set, will use DFS_ROUTER_ADMIN_ADDRESS_DEFAULT as router.admin-address.
       final String routerAdminAddr =
-          String.format(ROUTER_ADMIN_ADDRESS_FORMATTER, this.clusterName, RBFConfigKeys.DFS_ROUTER_ADMIN_PORT_DEFAULT);
+          String.format(ROUTER_ADMIN_ADDRESS_FORMATTER, this.routerAddr, RBFConfigKeys.DFS_ROUTER_ADMIN_PORT_DEFAULT);
       getConf().set(RBFConfigKeys.DFS_ROUTER_ADMIN_ADDRESS_KEY, routerAdminAddr);
     }
-
 
     UserGroupInformation.loginUserFromKeytab(keytabPrincipal, new File(keytabPath).getAbsolutePath());
     try {
