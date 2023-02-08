@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.security.PrivilegedExceptionAction;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.tools.DFSHAAdmin;
 import org.apache.hadoop.hdfs.tools.NNHAServiceTarget;
 import org.apache.hadoop.hdfs.web.URLConnectionFactory;
+import org.apache.hadoop.security.SecurityUtil;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -169,7 +171,15 @@ public class NamenodeHeartbeatService extends PeriodicService {
 
   @Override
   public void periodicInvoke() {
-    updateState();
+    try {
+      // Run using the login user credentials
+      SecurityUtil.doAsLoginUser((PrivilegedExceptionAction<Void>) () -> {
+        updateState();
+        return null;
+      });
+    } catch (IOException e) {
+      LOG.error("Cannot update namenode state", e);
+    }
   }
 
   /**
