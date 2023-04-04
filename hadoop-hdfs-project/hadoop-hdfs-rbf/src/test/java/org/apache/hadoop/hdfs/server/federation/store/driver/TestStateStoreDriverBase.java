@@ -88,6 +88,7 @@ public class TestStateStoreDriverBase {
   public static void tearDownCluster() {
     if (stateStore != null) {
       stateStore.stop();
+      stateStore = null;
     }
   }
 
