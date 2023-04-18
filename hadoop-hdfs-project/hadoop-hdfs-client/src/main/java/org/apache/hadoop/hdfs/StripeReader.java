@@ -350,13 +350,13 @@ abstract class StripeReader {
     // first read failure
     while (!futures.isEmpty()) {
       try {
+        long beginReadMS = Time.monotonicNow();
         StripingChunkReadResult r = StripedBlockUtil
             .getNextCompletedStripedRead(service, futures, 0);
-        dfsStripedInputStream.updateReadStats(r.getReadStats());
-        if (DFSClient.LOG.isDebugEnabled()) {
-          DFSClient.LOG.debug("Read task returned: " + r + ", for stripe "
-              + alignedStripe);
-        }
+        long readTimeMS = Time.monotonicNow() - beginReadMS;
+        dfsStripedInputStream.updateReadStats(r.getReadStats(), readTimeMS);
+        DFSClient.LOG.debug("Read task returned: {}, for stripe {}",
+            r, alignedStripe);
         StripingChunk returnedChunk = alignedStripe.chunks[r.index];
         Preconditions.checkNotNull(returnedChunk);
         Preconditions.checkState(returnedChunk.state == StripingChunk.PENDING);
