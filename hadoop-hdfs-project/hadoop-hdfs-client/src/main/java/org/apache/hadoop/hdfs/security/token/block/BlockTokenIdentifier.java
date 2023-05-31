@@ -54,10 +54,10 @@ public class BlockTokenIdentifier extends TokenIdentifier {
   private String blockPoolId;
   private long blockId;
   private final EnumSet<AccessMode> modes;
+  private byte[] handshakeMsg;
   private StorageType[] storageTypes;
   private String[] storageIds;
   private boolean useProto;
-  private byte[] handshakeMsg;
 
   private byte [] cache;
 
@@ -249,6 +249,12 @@ public class BlockTokenIdentifier extends TokenIdentifier {
     }
 
     try {
+      int handshakeMsgLen = WritableUtils.readVInt(in);
+      if (handshakeMsgLen != 0) {
+        handshakeMsg = new byte[handshakeMsgLen];
+        in.readFully(handshakeMsg);
+      }
+
       length = WritableUtils.readVInt(in);
       StorageType[] readStorageTypes = new StorageType[length];
       for (int i = 0; i < length; i++) {
@@ -262,12 +268,6 @@ public class BlockTokenIdentifier extends TokenIdentifier {
         readStorageIds[i] = WritableUtils.readString(in);
       }
       storageIds = readStorageIds;
-
-      int handshakeMsgLen = WritableUtils.readVInt(in);
-      if (handshakeMsgLen != 0) {
-        handshakeMsg = new byte[handshakeMsgLen];
-        in.readFully(handshakeMsg);
-      }
     } catch (EOFException eof) {
       // If the NameNode is on a version before HDFS-6708 and HDFS-9807, then
       // the block token won't have storage types or storage IDs. For backward
@@ -335,6 +335,10 @@ public class BlockTokenIdentifier extends TokenIdentifier {
     for (AccessMode aMode : modes) {
       WritableUtils.writeEnum(out, aMode);
     }
+    if (handshakeMsg != null) {
+      WritableUtils.writeVInt(out, handshakeMsg.length);
+      out.write(handshakeMsg);
+    }
     if (storageTypes != null) {
       WritableUtils.writeVInt(out, storageTypes.length);
       for (StorageType type : storageTypes) {
@@ -346,10 +350,6 @@ public class BlockTokenIdentifier extends TokenIdentifier {
       for (String id : storageIds) {
         WritableUtils.writeString(out, id);
       }
-    }
-    if (handshakeMsg != null && handshakeMsg.length > 0) {
-      WritableUtils.writeVInt(out, handshakeMsg.length);
-      out.write(handshakeMsg);
     }
   }
 
