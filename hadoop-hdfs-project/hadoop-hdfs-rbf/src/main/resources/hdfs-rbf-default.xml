@@ -196,6 +196,14 @@
   </property>
 
   <property>
+    <name>dfs.federation.router.dn-report.cache-autorefresh-enable</name>
+    <value>true</value>
+    <description>
+      Whether datanode report cache should be refreshed periodically.
+    </description>
+  </property>
+
+  <property>
     <name>dfs.federation.router.metrics.class</name>
     <value>org.apache.hadoop.hdfs.server.federation.metrics.FederationRPCPerformanceMonitor</value>
     <description>

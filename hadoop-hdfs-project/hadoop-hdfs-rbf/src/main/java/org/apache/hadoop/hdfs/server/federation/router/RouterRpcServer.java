@@ -28,6 +28,8 @@ import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DFS_
 import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DFS_ROUTER_READER_QUEUE_SIZE_KEY;
 import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DN_REPORT_CACHE_EXPIRE;
 import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DN_REPORT_CACHE_EXPIRE_MS_DEFAULT;
+import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DN_REPORT_CACHE_AUTO_REFRESH_ENABLE;
+import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DN_REPORT_CACHE_AUTO_REFRESH_ENABLE_DEFAULT;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -388,19 +390,36 @@ public class RouterRpcServer extends AbstractService implements ClientProtocol,
     long dnCacheExpire = conf.getTimeDuration(
         DN_REPORT_CACHE_EXPIRE,
         DN_REPORT_CACHE_EXPIRE_MS_DEFAULT, TimeUnit.MILLISECONDS);
-    this.dnCache = CacheBuilder.newBuilder()
-        .build(new DatanodeReportCacheLoader());
-
-    // Actively refresh the dn cache in a configured interval
-    Executors
-        .newSingleThreadScheduledExecutor()
-        .scheduleWithFixedDelay(() -> this.dnCache
-                .asMap()
-                .keySet()
-                .parallelStream()
-                .forEach((key) -> this.dnCache.refresh(key)),
-            0,
-            dnCacheExpire, TimeUnit.MILLISECONDS);
+    boolean dnCacheAutoRefreshEnable = conf.getBoolean(
+        DN_REPORT_CACHE_AUTO_REFRESH_ENABLE,
+        DN_REPORT_CACHE_AUTO_REFRESH_ENABLE_DEFAULT);
+    if (dnCacheAutoRefreshEnable) {
+      LOG.info("Using datanode cache with auto refresh");
+      this.dnCache = CacheBuilder.newBuilder()
+          .build(new DatanodeReportCacheLoader());
+  
+      // Actively refresh the dn cache in a configured interval
+      Executors
+          .newSingleThreadScheduledExecutor()
+          .scheduleWithFixedDelay(() -> this.dnCache
+                  .asMap()
+                  .keySet()
+                  .parallelStream()
+                  .forEach((key) -> this.dnCache.refresh(key)),
+              0,
+              dnCacheExpire, TimeUnit.MILLISECONDS);
+    } else {
+      LOG.info("Using datanode cache without auto refresh");
+      this.dnCache = CacheBuilder.newBuilder()
+          .expireAfterWrite(dnCacheExpire, TimeUnit.MILLISECONDS)
+          .build(
+              new CacheLoader<DatanodeReportType, DatanodeInfo[]>() {
+                @Override
+                public DatanodeInfo[] load(DatanodeReportType type) throws Exception {
+                  return getCachedDatanodeReportImpl(type);
+                }
+              });
+    }
 
     Executors
         .newSingleThreadScheduledExecutor()

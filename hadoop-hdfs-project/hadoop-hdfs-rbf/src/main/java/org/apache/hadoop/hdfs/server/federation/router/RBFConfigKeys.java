@@ -330,6 +330,9 @@ public class RBFConfigKeys extends CommonConfigurationKeysPublic {
       FEDERATION_ROUTER_PREFIX + "dn-report.cache-expire";
   public static final long DN_REPORT_CACHE_EXPIRE_MS_DEFAULT =
       TimeUnit.SECONDS.toMillis(10);
+  public static final String DN_REPORT_CACHE_AUTO_REFRESH_ENABLE =
+      FEDERATION_ROUTER_PREFIX + "dn-report.cache-autorefresh-enable";
+  public static final boolean DN_REPORT_CACHE_AUTO_REFRESH_ENABLE_DEFAULT = true;
 
   // HDFS Router-based federation quota
   public static final String DFS_ROUTER_QUOTA_ENABLE =

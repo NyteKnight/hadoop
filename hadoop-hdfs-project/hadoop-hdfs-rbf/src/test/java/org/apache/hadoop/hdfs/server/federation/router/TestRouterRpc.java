@@ -25,6 +25,8 @@ import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.delet
 import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.getFileStatus;
 import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.verifyFileExists;
 import static org.apache.hadoop.hdfs.server.federation.MiniRouterDFSCluster.TEST_STRING;
+import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DN_REPORT_CACHE_AUTO_REFRESH_ENABLE;
+import static org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys.DN_REPORT_CACHE_EXPIRE;
 import static org.apache.hadoop.test.GenericTestUtils.assertExceptionContains;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
@@ -1920,6 +1922,63 @@ public class TestRouterRpc {
     String[] result =
         router.getRouter().getRpcServer().getGroupsForUser("user");
     assertArrayEquals(group, result);
+  }
+
+  @Test
+  public void testGetCachedDatanodeReportNoAutoRefresh() throws Exception {
+    List<String> nss = cluster.getNameservices();
+    Configuration routerConfig = cluster.generateRouterConfiguration(nss.get(0), null);
+    testAutoRefresh(routerConfig, false, nss.size());
+  }
+
+  @Test
+  public void testGetCachedDatanodeReportAutoRefresh() throws Exception {
+    List<String> nss = cluster.getNameservices();
+    Configuration routerConfig = cluster.generateRouterConfiguration(nss.get(0), null);
+    testAutoRefresh(routerConfig, true, nss.size());
+  }
+
+  private void testAutoRefresh(Configuration routerConfig, boolean enableAutoRefresh,
+      int namespaces) throws Exception {
+    // Set auto-refresh config
+    routerConfig.setBoolean(DN_REPORT_CACHE_AUTO_REFRESH_ENABLE, enableAutoRefresh);
+    routerConfig.setTimeDuration(DN_REPORT_CACHE_EXPIRE, 100, TimeUnit.MILLISECONDS);
+
+    Router testRouter = cluster.getRandomRouter().getRouter();
+    RouterRpcServer rpcServer = new RouterRpcServer(routerConfig, testRouter,
+        testRouter.getNamenodeResolver(), testRouter.getSubclusterResolver());
+    try {
+      rpcServer.init(routerConfig);
+      rpcServer.start();
+
+      // Save initial datanode report to identify when it has been refreshed
+      final DatanodeInfo[] baseDatanodeReport =
+          rpcServer.getCachedDatanodeReport(DatanodeReportType.LIVE);
+
+      // Wait for datanode report to be refreshed
+      GenericTestUtils.waitFor(new Supplier<Boolean>() {
+        @Override
+        public Boolean get() {
+          try {
+            DatanodeInfo[] latestDatanodeReport =
+                rpcServer.getCachedDatanodeReport(DatanodeReportType.LIVE);
+            return latestDatanodeReport != baseDatanodeReport;
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }, 200, 5 * 1000);
+    } finally {
+      rpcServer.stop();
+      rpcServer.close();
+    }
+
+    long proxyOps = rpcServer.getRPCMetrics().getProxyOps();
+    if (enableAutoRefresh) {
+      assertTrue("Periodic datanode requests are expected", namespaces * 2 < proxyOps);
+    } else {
+      assertEquals("On-demand datanode requests are expected", namespaces * 2, proxyOps);
+    }
   }
 
   @Test
