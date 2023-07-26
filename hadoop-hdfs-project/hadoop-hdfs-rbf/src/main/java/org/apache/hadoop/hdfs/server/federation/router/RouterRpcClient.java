@@ -1738,9 +1738,16 @@ public class RouterRpcClient {
   }
 
   private boolean isObserverReadEligible(String nsId, Method method) {
-    boolean isReadEnabledForNamespace =
-        observerReadEnabledDefault != observerReadEnabledOverrides.contains(nsId);
-    return isReadEnabledForNamespace && isReadCall(method);
+    return isReadCall(method) && isNamespaceObserverReadEligible(nsId);
+  }
+
+  /**
+   * Check if a namespace is eligible for observer reads.
+   * @param nsId namespaceID
+   * @return whether the 'namespace' has observer reads enabled.
+   */
+  boolean isNamespaceObserverReadEligible(String nsId) {
+    return observerReadEnabledDefault != observerReadEnabledOverrides.contains(nsId);
   }
 
   /**
@@ -1748,6 +1755,9 @@ public class RouterRpcClient {
    * @return whether the 'method' is a read-only operation.
    */
   private static boolean isReadCall(Method method) {
+    if (method == null) {
+      return false;
+    }
     if (!method.isAnnotationPresent(ReadOnly.class)) {
       return false;
     }
