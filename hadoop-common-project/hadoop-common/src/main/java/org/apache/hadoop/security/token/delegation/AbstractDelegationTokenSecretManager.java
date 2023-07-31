@@ -82,8 +82,7 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
    * Cache of currently valid tokens, mapping from DelegationTokenIdentifier 
    * to DelegationTokenInformation. Protected by this object lock.
    */
-  protected final Map<TokenIdent, DelegationTokenInformation> currentTokens 
-      = new ConcurrentHashMap<>();
+  protected Map<TokenIdent, DelegationTokenInformation> currentTokens;
   
   /**
    * Sequence number to create DelegationTokenIdentifier.
@@ -143,6 +142,7 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
     this.tokenRenewInterval = delegationTokenRenewInterval;
     this.tokenRemoverScanInterval = delegationTokenRemoverScanInterval;
     this.storeTokenTrackingId = false;
+    this.currentTokens = new ConcurrentHashMap<>();
   }
 
   /** should be called before this object is used */
@@ -698,8 +698,12 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
     for (TokenIdent ident : expiredTokens) {
       logExpireToken(ident);
       LOG.info("Removing expired token " + formatTokenId(ident));
-      removeStoredToken(ident);
+      removeExpiredStoredToken(ident);
     }
+  }
+
+  protected void removeExpiredStoredToken(TokenIdent ident) throws IOException {
+    removeStoredToken(ident);
   }
 
   public void stopThreads() {
