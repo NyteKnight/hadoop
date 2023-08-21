@@ -35,10 +35,12 @@ import org.apache.hadoop.thirdparty.com.google.common.cache.LoadingCache;
  */
 public class DelegationTokenLoadingCache<K, V> implements Map<K, V> {
   private LoadingCache<K, V> internalLoadingCache;
-  
-  public DelegationTokenLoadingCache(long cacheExpirationMs, Function<K, V> singleEntryFunction) {
+
+  public DelegationTokenLoadingCache(long cacheExpirationMs, long maximumCacheSize,
+      Function<K, V> singleEntryFunction) {
     this.internalLoadingCache = CacheBuilder.newBuilder()
         .expireAfterWrite(cacheExpirationMs, TimeUnit.MILLISECONDS)
+        .maximumSize(maximumCacheSize)
         .build(new CacheLoader<K, V>() {
           @Override
           public V load(K k) throws Exception {
@@ -67,6 +69,7 @@ public class DelegationTokenLoadingCache<K, V> implements Map<K, V> {
     throw new UnsupportedOperationException();
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public V get(Object key) {
     try {

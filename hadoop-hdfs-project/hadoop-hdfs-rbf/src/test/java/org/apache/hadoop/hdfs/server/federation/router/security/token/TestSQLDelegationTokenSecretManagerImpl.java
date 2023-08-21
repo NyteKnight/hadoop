@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.hadoop.hdfs.server.federation.router.security.token;
 
 import java.io.IOException;
@@ -29,11 +47,12 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+
 public class TestSQLDelegationTokenSecretManagerImpl {
   private static final String CONNECTION_URL = "jdbc:derby:memory:TokenStore";
   private static final int TEST_MAX_RETRIES = 3;
   private static final int TOKEN_EXPIRATION_SECONDS = 1;
-  private static Configuration CONF;
+  private static Configuration conf;
 
   @Before
   public void init() throws SQLException {
@@ -49,15 +68,13 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   public static void initDatabase() throws SQLException {
     DriverManager.getConnection(CONNECTION_URL + ";create=true");
 
-    CONF = new Configuration();
-    CONF.set(SQLConnectionFactory.CONNECTION_URL, CONNECTION_URL);
-    CONF.set(SQLConnectionFactory.CONNECTION_USERNAME, "testuser");
-    CONF.set(SQLConnectionFactory.CONNECTION_PASSWORD, "testpassword");
-    CONF.set(SQLConnectionFactory.CONNECTION_DRIVER, "org.apache.derby.jdbc.EmbeddedDriver");
-    CONF.setInt(SQLSecretManagerRetriableHandlerImpl.MAX_RETRIES, TEST_MAX_RETRIES);
-    CONF.setInt(SQLSecretManagerRetriableHandlerImpl.RETRY_SLEEP_TIME_MS, 10);
-    CONF.setInt(SQLDelegationTokenSecretManager.SQL_DTSM_TOKEN_LOADING_CACHE_EXPIRATION_MS, 200);
-    CONF.setInt(DelegationTokenManager.RENEW_INTERVAL, TOKEN_EXPIRATION_SECONDS);
+    conf = new Configuration();
+    conf.set(SQLConnectionFactory.CONNECTION_URL, CONNECTION_URL);
+    conf.set(SQLConnectionFactory.CONNECTION_USERNAME, "testuser");
+    conf.set(SQLConnectionFactory.CONNECTION_PASSWORD, "testpassword");
+    conf.set(SQLConnectionFactory.CONNECTION_DRIVER, "org.apache.derby.jdbc.EmbeddedDriver");
+    conf.setInt(SQLSecretManagerRetriableHandlerImpl.MAX_RETRIES, TEST_MAX_RETRIES);
+    conf.setInt(SQLSecretManagerRetriableHandlerImpl.RETRY_SLEEP_TIME_MS, 10);
   }
 
   @AfterClass
@@ -75,10 +92,10 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   @Test
   public void testSingleSecretManager() throws Exception {
     DelegationTokenManager tokenManager = createTokenManager();
-
     try {
-      Token token = tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
-      validateToken(tokenManager, token, "foo");
+      Token<? extends AbstractDelegationTokenIdentifier> token =
+          tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      validateToken(tokenManager, token);
     } finally {
       stopTokenManager(tokenManager);
     }
@@ -90,11 +107,13 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     DelegationTokenManager tokenManager2 = createTokenManager();
 
     try {
-      Token token1 = tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
-      Token token2 = tokenManager2.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      Token<? extends AbstractDelegationTokenIdentifier> token1 =
+          tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      Token<? extends AbstractDelegationTokenIdentifier> token2 =
+          tokenManager2.createToken(UserGroupInformation.getCurrentUser(), "foo");
 
-      validateToken(tokenManager1, token2, "foo");
-      validateToken(tokenManager2, token1, "foo");
+      validateToken(tokenManager1, token2);
+      validateToken(tokenManager2, token1);
     } finally {
       stopTokenManager(tokenManager1);
       stopTokenManager(tokenManager2);
@@ -103,15 +122,16 @@ public class TestSQLDelegationTokenSecretManagerImpl {
 
   @Test
   public void testCancelToken() throws Exception {
-    DelegationTokenManager tokenManager1 = createTokenManager();
-    DelegationTokenManager tokenManager2 = createTokenManager();
+    DelegationTokenManager tokenManager1 = createTokenManager(getShortLivedTokenConf());
+    DelegationTokenManager tokenManager2 = createTokenManager(getShortLivedTokenConf());
 
     TestDelegationTokenSecretManager secretManager2 =
         (TestDelegationTokenSecretManager) tokenManager2.getDelegationTokenSecretManager();
-    
+
     try {
       // Create token on token manager 1
-      Token token1 = tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      Token<? extends AbstractDelegationTokenIdentifier> token1 =
+          tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
 
       // Load token on token manager 2 to test it doesn't get stale
       tokenManager2.verifyToken(token1);
@@ -131,15 +151,16 @@ public class TestSQLDelegationTokenSecretManagerImpl {
 
   @Test
   public void testRenewToken() throws Exception {
-    DelegationTokenManager tokenManager1 = createTokenManager();
-    DelegationTokenManager tokenManager2 = createTokenManager();
+    DelegationTokenManager tokenManager1 = createTokenManager(getShortLivedTokenConf());
+    DelegationTokenManager tokenManager2 = createTokenManager(getShortLivedTokenConf());
 
     TestDelegationTokenSecretManager secretManager2 =
         (TestDelegationTokenSecretManager) tokenManager2.getDelegationTokenSecretManager();
 
     try {
       // Create token on token manager 1
-      Token token1 = tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      Token<? extends AbstractDelegationTokenIdentifier> token1 =
+          tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
       long expirationTime = Time.monotonicNow() +
           TimeUnit.SECONDS.toMillis(TOKEN_EXPIRATION_SECONDS) * 2;
 
@@ -167,6 +188,15 @@ public class TestSQLDelegationTokenSecretManagerImpl {
       stopTokenManager(tokenManager1);
       stopTokenManager(tokenManager2);
     }
+  }
+
+  private Configuration getShortLivedTokenConf() {
+    Configuration shortLivedConf = new Configuration(conf);
+    shortLivedConf.setTimeDuration(
+        SQLDelegationTokenSecretManager.SQL_DTSM_TOKEN_LOADING_CACHE_EXPIRATION,
+        200, TimeUnit.MILLISECONDS);
+    shortLivedConf.setInt(DelegationTokenManager.RENEW_INTERVAL, TOKEN_EXPIRATION_SECONDS);
+    return shortLivedConf;
   }
 
   private void callRemoveExpiredTokensAndValidateSQL(
@@ -246,7 +276,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
     Set<Integer> sequenceNums = new HashSet<>();
 
     DelegationTokenManager tokenManager = createTokenManager();
-    
+
     try {
       SQLDelegationTokenSecretManagerImpl secretManager =
           (SQLDelegationTokenSecretManagerImpl) tokenManager.getDelegationTokenSecretManager();
@@ -271,7 +301,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   @Test
   public void testDelegationKeyAllocation() throws Exception {
     DelegationTokenManager tokenManager1 = createTokenManager();
-    
+
     try {
       SQLDelegationTokenSecretManagerImpl secretManager1 =
           (SQLDelegationTokenSecretManagerImpl) tokenManager1.getDelegationTokenSecretManager();
@@ -281,7 +311,8 @@ public class TestSQLDelegationTokenSecretManagerImpl {
       int keyId1 = secretManager1.getCurrentKeyId();
 
       // Validate that latest key1 is assigned to tokenManager1 tokens
-      Token token1 = tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      Token<? extends AbstractDelegationTokenIdentifier> token1 =
+          tokenManager1.createToken(UserGroupInformation.getCurrentUser(), "foo");
       validateKeyId(token1, keyId1);
 
       DelegationTokenManager tokenManager2 = createTokenManager();
@@ -295,7 +326,8 @@ public class TestSQLDelegationTokenSecretManagerImpl {
         Assert.assertNotEquals("Each secret manager has its own key", keyId1, keyId2);
 
         // Validate that latest key2 is assigned to tokenManager2 tokens
-        Token token2 = tokenManager2.createToken(UserGroupInformation.getCurrentUser(), "foo");
+        Token<? extends AbstractDelegationTokenIdentifier> token2 =
+            tokenManager2.createToken(UserGroupInformation.getCurrentUser(), "foo");
         validateKeyId(token2, keyId2);
 
         // Validate that key1 is still assigned to tokenManager1 tokens
@@ -315,18 +347,18 @@ public class TestSQLDelegationTokenSecretManagerImpl {
 
   @Test
   public void testHikariConfigs() {
-    HikariDataSourceConnectionFactory factory1 = new HikariDataSourceConnectionFactory(CONF);
+    HikariDataSourceConnectionFactory factory1 = new HikariDataSourceConnectionFactory(conf);
     int defaultMaximumPoolSize = factory1.getDataSource().getMaximumPoolSize();
     factory1.shutdown();
 
     // Changing default maximumPoolSize
-    Configuration conf = new Configuration(CONF);
-    conf.setInt(HikariDataSourceConnectionFactory.HIKARI_PROPS + "maximumPoolSize",
+    Configuration hikariConf = new Configuration(conf);
+    hikariConf.setInt(HikariDataSourceConnectionFactory.HIKARI_PROPS + "maximumPoolSize",
         defaultMaximumPoolSize + 1);
 
     // Verifying property is correctly set in datasource
-    HikariDataSourceConnectionFactory factory2 = new HikariDataSourceConnectionFactory(conf);
-    Assert.assertEquals(factory2.getDataSource().getMaximumPoolSize(), 
+    HikariDataSourceConnectionFactory factory2 = new HikariDataSourceConnectionFactory(hikariConf);
+    Assert.assertEquals(factory2.getDataSource().getMaximumPoolSize(),
         defaultMaximumPoolSize + 1);
     factory2.shutdown();
   }
@@ -338,13 +370,13 @@ public class TestSQLDelegationTokenSecretManagerImpl {
         (TestDelegationTokenSecretManager) tokenManager.getDelegationTokenSecretManager();
 
     try {
-    // Prevent delegation keys to roll for the rest of the test
-    secretManager.lockKeyRoll();
+      // Prevent delegation keys to roll for the rest of the test
+      secretManager.lockKeyRoll();
 
-    // Reset counter and expect a single request when inserting a token
-    TestRetryHandler.resetExecutionAttemptCounter();
-    tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
-    Assert.assertEquals(1, TestRetryHandler.getExecutionAttempts());
+      // Reset counter and expect a single request when inserting a token
+      TestRetryHandler.resetExecutionAttemptCounter();
+      tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
+      Assert.assertEquals(1, TestRetryHandler.getExecutionAttempts());
 
       // Breaking database connections to cause retries
       secretManager.setReadOnly(true);
@@ -361,46 +393,62 @@ public class TestSQLDelegationTokenSecretManagerImpl {
   }
 
   private DelegationTokenManager createTokenManager() {
+    return createTokenManager(conf);
+  }
+
+  private DelegationTokenManager createTokenManager(Configuration config) {
     DelegationTokenManager tokenManager = new DelegationTokenManager(new Configuration(), null);
-    tokenManager.setExternalDelegationTokenSecretManager(new TestDelegationTokenSecretManager());
+    tokenManager.setExternalDelegationTokenSecretManager(
+        new TestDelegationTokenSecretManager(config));
     return tokenManager;
   }
 
-  private void allocateSequenceNum(DelegationTokenManager tokenManager, Set<Integer> sequenceNums) throws IOException {
-    Token token = tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
-    AbstractDelegationTokenIdentifier tokenIdentifier = (AbstractDelegationTokenIdentifier) token.decodeIdentifier();
-    Assert.assertFalse("Verify sequence number is unique", sequenceNums.contains(tokenIdentifier.getSequenceNumber()));
+  private void allocateSequenceNum(DelegationTokenManager tokenManager, Set<Integer> sequenceNums)
+      throws IOException {
+    Token<? extends AbstractDelegationTokenIdentifier> token =
+        tokenManager.createToken(UserGroupInformation.getCurrentUser(), "foo");
+    AbstractDelegationTokenIdentifier tokenIdentifier = token.decodeIdentifier();
+    Assert.assertFalse("Verify sequence number is unique",
+        sequenceNums.contains(tokenIdentifier.getSequenceNumber()));
 
     sequenceNums.add(tokenIdentifier.getSequenceNumber());
   }
 
-  private void validateToken(DelegationTokenManager tokenManager, Token token, String renewer) throws Exception {
+  private void validateToken(DelegationTokenManager tokenManager,
+      Token<? extends AbstractDelegationTokenIdentifier> token)
+      throws Exception {
     SQLDelegationTokenSecretManagerImpl secretManager =
         (SQLDelegationTokenSecretManagerImpl) tokenManager.getDelegationTokenSecretManager();
-    AbstractDelegationTokenIdentifier tokenIdentifier = (AbstractDelegationTokenIdentifier) token.decodeIdentifier();
+    AbstractDelegationTokenIdentifier tokenIdentifier = token.decodeIdentifier();
 
     // Verify token using token manager
     tokenManager.verifyToken(token);
 
-    byte[] tokenInfo1 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(), tokenIdentifier.getBytes());
+    byte[] tokenInfo1 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(),
+        tokenIdentifier.getBytes());
     Assert.assertNotNull("Verify token exists in database", tokenInfo1);
 
     // Renew token using token manager
-    tokenManager.renewToken(token, renewer);
+    tokenManager.renewToken(token, "foo");
 
-    byte[] tokenInfo2 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(), tokenIdentifier.getBytes());
+    byte[] tokenInfo2 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(),
+        tokenIdentifier.getBytes());
     Assert.assertNotNull("Verify token exists in database", tokenInfo2);
-    Assert.assertFalse("Verify token has been updated in database", Arrays.equals(tokenInfo1, tokenInfo2));
+    Assert.assertFalse("Verify token has been updated in database",
+        Arrays.equals(tokenInfo1, tokenInfo2));
 
     // Cancel token using token manager
-    tokenManager.cancelToken(token, renewer);
-    byte[] tokenInfo3 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(), tokenIdentifier.getBytes());
+    tokenManager.cancelToken(token, "foo");
+    byte[] tokenInfo3 = secretManager.selectTokenInfo(tokenIdentifier.getSequenceNumber(),
+        tokenIdentifier.getBytes());
     Assert.assertNull("Verify token was removed from database", tokenInfo3);
   }
 
-  private void validateKeyId(Token token, int expectedKeyiD) throws IOException {
-    AbstractDelegationTokenIdentifier tokenIdentifier = (AbstractDelegationTokenIdentifier) token.decodeIdentifier();
-    Assert.assertEquals("Verify that keyId is assigned to token", tokenIdentifier.getMasterKeyId(), expectedKeyiD);
+  private void validateKeyId(Token<? extends AbstractDelegationTokenIdentifier> token,
+      int expectedKeyiD) throws IOException {
+    AbstractDelegationTokenIdentifier tokenIdentifier = token.decodeIdentifier();
+    Assert.assertEquals("Verify that keyId is assigned to token",
+        tokenIdentifier.getMasterKeyId(), expectedKeyiD);
   }
 
   private static Connection getTestDBConnection() {
@@ -439,7 +487,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
       connection.createStatement().execute(statement);
     }
   }
-  
+
   private void stopTokenManager(DelegationTokenManager tokenManager) {
     TestDelegationTokenSecretManager secretManager =
         (TestDelegationTokenSecretManager) tokenManager.getDelegationTokenSecretManager();
@@ -459,9 +507,9 @@ public class TestSQLDelegationTokenSecretManagerImpl {
       return keyRollLock;
     }
 
-    public TestDelegationTokenSecretManager() {
-      super(CONF, new TestConnectionFactory(CONF),
-          SQLSecretManagerRetriableHandlerImpl.getInstance(CONF, new TestRetryHandler()));
+    TestDelegationTokenSecretManager(Configuration conf) {
+      super(conf, new TestConnectionFactory(conf),
+          SQLSecretManagerRetriableHandlerImpl.getInstance(conf, new TestRetryHandler()));
     }
 
     // Tests can call this method to prevent delegation keys from
@@ -503,7 +551,7 @@ public class TestSQLDelegationTokenSecretManagerImpl {
 
   static class TestConnectionFactory extends HikariDataSourceConnectionFactory {
     private boolean readOnly = false;
-    public TestConnectionFactory(Configuration conf) {
+    TestConnectionFactory(Configuration conf) {
       super(conf);
     }
 
