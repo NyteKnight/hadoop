@@ -398,6 +398,11 @@ public class MockResolver
   public void setRouterId(String router) {
   }
 
+  @Override
+  public void rotateCache(
+      String nsId, FederationNamenodeContext namenode, boolean listObserversFirst) {
+  }
+
   /**
    * Mocks the availability of default namespace.
    * @param b if true default namespace is unset.
