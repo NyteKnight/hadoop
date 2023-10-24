@@ -62,6 +62,8 @@ public class DelegationTokenManager {
   public static final String REMOVAL_SCAN_INTERVAL = PREFIX +
       "removal-scan-interval.sec";
   public static final long REMOVAL_SCAN_INTERVAL_DEFAULT = 60 * 60;
+  public static final String ENABLE_BUNDLED_TOKENS = PREFIX + "bundled-tokens.enabled";
+  public static final boolean ENABLE_BUNDLED_TOKENS_DEFAULT = false;
 
   private static class DelegationTokenSecretManager
       extends AbstractDelegationTokenSecretManager<DelegationTokenIdentifier> {

@@ -111,6 +111,7 @@ import static org.apache.hadoop.ha.HAServiceProtocol.HAServiceState.OBSERVER;
 
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
 
+import org.apache.hadoop.security.token.delegation.web.DelegationTokenManager;
 import org.apache.hadoop.thirdparty.com.google.common.collect.Maps;
 import org.apache.hadoop.thirdparty.protobuf.ByteString;
 import org.apache.hadoop.hdfs.protocol.BatchedDirectoryListing;
@@ -6056,7 +6057,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL,
         conf.getBoolean(DFS_NAMENODE_AUDIT_LOG_TOKEN_TRACKING_ID_KEY,
             DFS_NAMENODE_AUDIT_LOG_TOKEN_TRACKING_ID_DEFAULT),
-        this);
+        this,
+        conf.getBoolean(DelegationTokenManager.ENABLE_BUNDLED_TOKENS,
+            DelegationTokenManager.ENABLE_BUNDLED_TOKENS_DEFAULT));
   }
 
   /**

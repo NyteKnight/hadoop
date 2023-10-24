@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.security.token.delegation.BundledDelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdentifier;
 import org.apache.hadoop.security.token.delegation.SQLDelegationTokenSecretManager;
@@ -65,7 +66,8 @@ public class SQLDelegationTokenSecretManagerImpl
 
   @Override
   public DelegationTokenIdentifier createIdentifier() {
-    return new DelegationTokenIdentifier();
+    return isEnableBundledTokens() ? new BundledDelegationTokenIdentifier()
+        : new DelegationTokenIdentifier();
   }
 
   @Override

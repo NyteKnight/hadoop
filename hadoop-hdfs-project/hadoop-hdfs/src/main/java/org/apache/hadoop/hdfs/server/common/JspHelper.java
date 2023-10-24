@@ -18,6 +18,10 @@
 
 package org.apache.hadoop.hdfs.server.common;
 
+import org.apache.hadoop.hdfs.security.token.delegation.BundledDelegationTokenIdentifier;
+import org.apache.hadoop.security.token.TokenIdentifier;
+import org.apache.hadoop.security.token.delegation.BundledTokenAuthenticator;
+import org.apache.hadoop.security.token.delegation.web.DelegationTokenManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -168,14 +172,24 @@ public class JspHelper {
     ByteArrayInputStream buf =
         new ByteArrayInputStream(token.getIdentifier());
     DataInputStream in = new DataInputStream(buf);
-    DelegationTokenIdentifier id = new DelegationTokenIdentifier();
+    boolean enableBundledTokens = conf.getBoolean(DelegationTokenManager.ENABLE_BUNDLED_TOKENS,
+        DelegationTokenManager.ENABLE_BUNDLED_TOKENS_DEFAULT);
+    DelegationTokenIdentifier id = enableBundledTokens ? new BundledDelegationTokenIdentifier()
+        : new DelegationTokenIdentifier();
     id.readFields(in);
     if (context != null) {
       final TokenVerifier<DelegationTokenIdentifier> tokenVerifier =
           NameNodeHttpServer.getTokenVerifierFromContext(context);
       if (tokenVerifier != null) {
         // Verify the token.
-        tokenVerifier.verifyToken(id, token.getPassword());
+        BundledTokenAuthenticator bundledAuthenticator = new BundledTokenAuthenticator(id,
+            (t, p) -> tokenVerifier.verifyToken((DelegationTokenIdentifier) t, p));
+        if (bundledAuthenticator.hasInnerTokens()) {
+          Token<?> bundledToken = bundledAuthenticator.extractMatchingInnerToken();
+          token.setID(bundledToken.getIdentifier());
+        } else {
+          tokenVerifier.verifyToken(id, token.getPassword());
+        }
       }
     }
     UserGroupInformation ugi = id.getUser();

@@ -76,6 +76,16 @@ public class DelegationTokenSecretManager
         namesystem);
   }
 
+  public DelegationTokenSecretManager(long delegationKeyUpdateInterval,
+      long delegationTokenMaxLifetime, long delegationTokenRenewInterval,
+      long delegationTokenRemoverScanInterval, boolean storeTokenTrackingId,
+      FSNamesystem namesystem, boolean enableBundledTokens) {
+    super(delegationKeyUpdateInterval, delegationTokenMaxLifetime, delegationTokenRenewInterval,
+        delegationTokenRemoverScanInterval, enableBundledTokens);
+    this.namesystem = namesystem;
+    this.storeTokenTrackingId = storeTokenTrackingId;
+  }
+  
   /**
    * Create a secret manager
    * @param delegationKeyUpdateInterval the number of milliseconds for rolling
@@ -100,7 +110,8 @@ public class DelegationTokenSecretManager
 
   @Override //SecretManager
   public DelegationTokenIdentifier createIdentifier() {
-    return new DelegationTokenIdentifier();
+    return isEnableBundledTokens() ? new BundledDelegationTokenIdentifier()
+        : new DelegationTokenIdentifier();
   }
   
   @Override

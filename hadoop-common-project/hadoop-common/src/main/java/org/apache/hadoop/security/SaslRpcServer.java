@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivilegedExceptionAction;
 import java.security.Security;
+import java.util.Arrays;
 import java.util.Map;
 
 import javax.security.auth.callback.Callback;
@@ -49,7 +50,9 @@ import org.apache.hadoop.ipc.Server.Connection;
 import org.apache.hadoop.ipc.StandbyException;
 import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
+import org.apache.hadoop.security.token.delegation.BundledTokenAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -298,7 +301,18 @@ public class SaslRpcServer {
       if (pc != null) {
         TokenIdentifier tokenIdentifier = getIdentifier(nc.getDefaultName(),
             secretManager);
-        char[] password = getPassword(tokenIdentifier);
+        BundledTokenAuthenticator bundledAuthenticator =
+            new BundledTokenAuthenticator(tokenIdentifier, this::verifyBundledTokens);
+        char[] password;
+        if (bundledAuthenticator.hasInnerTokens()) {
+          Token bundledToken = bundledAuthenticator.extractMatchingInnerToken();
+          // Set tokenIdentifier, used only for logging.
+          tokenIdentifier = bundledToken.decodeIdentifier();
+          // Set password, used to authenticate the SASL request.
+          password = encodePassword(bundledAuthenticator.getMainTokenPassword());
+        } else {
+          password = getPassword(tokenIdentifier);
+        }
         UserGroupInformation user = null;
         user = tokenIdentifier.getUser(); // may throw exception
         connection.attemptingUser = user;
@@ -327,6 +341,18 @@ public class SaslRpcServer {
           }
           ac.setAuthorizedID(authzid);
         }
+      }
+    }
+    
+    private void verifyBundledTokens(TokenIdentifier innerToken, byte[] innerPassword)
+        throws IOException {
+      char[] storedPassword = getPassword(innerToken);
+      
+      // Check used in DigestMD5Server class to compare the password sent by the client
+      // and the one stored on the server.
+      if (!Arrays.equals(encodePassword(innerPassword), storedPassword)) {
+        throw new SaslException(
+            "DIGEST-MD5: digest response format violation. Mismatched response.");
       }
     }
   }

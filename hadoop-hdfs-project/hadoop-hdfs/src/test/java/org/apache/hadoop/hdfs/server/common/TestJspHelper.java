@@ -20,6 +20,7 @@ package org.apache.hadoop.hdfs.server.common;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.security.token.delegation.BundledDelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeHttpServer;
@@ -35,9 +36,12 @@ import org.apache.hadoop.security.authorize.AuthorizationException;
 import org.apache.hadoop.security.authorize.DefaultImpersonationProvider;
 import org.apache.hadoop.security.authorize.ProxyServers;
 import org.apache.hadoop.security.authorize.ProxyUsers;
+import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
+import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdentifier;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager;
+import org.apache.hadoop.security.token.delegation.web.DelegationTokenManager;
 import org.apache.hadoop.test.LambdaTestUtils;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -50,6 +54,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -143,6 +148,76 @@ public class TestJspHelper {
     Token<? extends TokenIdentifier> tokenInUgi = ugi.getTokens().iterator()
         .next();
     Assert.assertEquals(expected, tokenInUgi.getService().toString());
+  }
+
+  @Test
+  public void testBundledTokenWithInnerTokens() throws Exception {
+    conf.set(DFSConfigKeys.FS_DEFAULT_NAME_KEY, "hdfs://localhost:4321/");
+    conf.setBoolean(DelegationTokenManager.ENABLE_BUNDLED_TOKENS, true);
+    conf.set(DFSConfigKeys.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
+    UserGroupInformation.setConfiguration(conf);
+
+    // Create multiple tokens and add them to a BundledTokenIdentifier.
+    Token<AbstractDelegationTokenIdentifier> token1 = createTestToken(1);
+    Token<AbstractDelegationTokenIdentifier> token2 = createTestToken(2);
+    Token<AbstractDelegationTokenIdentifier> token3 = createTestToken(3);
+    BundledDelegationTokenIdentifier bundledTokenId = new BundledDelegationTokenIdentifier(
+        token1, new Token[] { token1, token2, token3});
+    bundledTokenId.clearCache();
+    
+    // Send separate requests, each expecting a different innerToken.
+    Token<?> bundledToken = new Token<>(bundledTokenId, new DummySecretManager(0, 0, 0, 0));
+    sendRequestAndValidate(bundledToken, token1);
+    sendRequestAndValidate(bundledToken, token2);
+    sendRequestAndValidate(bundledToken, token3);
+  }
+
+  @Test
+  public void testBundledTokenWithoutInnerTokens() throws Exception {
+    conf.set(DFSConfigKeys.FS_DEFAULT_NAME_KEY, "hdfs://localhost:4321/");
+    conf.setBoolean(DelegationTokenManager.ENABLE_BUNDLED_TOKENS, true);
+    conf.set(DFSConfigKeys.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
+    UserGroupInformation.setConfiguration(conf);
+
+    // Create a regular token and send request.
+    Token<AbstractDelegationTokenIdentifier> token = createTestToken(1);
+    sendRequestAndValidate(token, token);
+    
+    // Create a BundledTokenIdentifier without innerTokens, so the main token is expected for auth.
+    BundledDelegationTokenIdentifier bundledTokenId = new BundledDelegationTokenIdentifier(token, null);
+    bundledTokenId.clearCache();
+    Token<?> bundledToken = new Token<>(bundledTokenId, new DummySecretManager(0, 0, 0, 0));
+    sendRequestAndValidate(bundledToken, bundledToken);
+  }
+
+  private void sendRequestAndValidate(Token<?> token, Token<?> expectedToken) throws Exception {
+    ServletContext context = mock(ServletContext.class);
+    HttpServletRequest request = getMockRequest(null, null, null);
+    String tokenString = token.encodeToUrlString();
+    when(request.getParameter(JspHelper.DELEGATION_PARAMETER_NAME)).thenReturn(tokenString);
+
+    // Configure token verifier so expected token is chosen for auth.
+    when(context.getAttribute(eq("name.node"))).thenReturn(
+        new TestTokenVerifier((DelegationTokenIdentifier) expectedToken.decodeIdentifier()));
+
+    // Send request and validate that expected token is used for auth.
+    UserGroupInformation ugi = JspHelper.getUGI(context, request, conf);
+    Token<?> foundToken = ugi.getTokens().iterator().next();
+    assertEquals(expectedToken.decodeIdentifier(), foundToken.decodeIdentifier());
+
+    // Configure token verifier so a random token is expected for auth.
+    when(context.getAttribute(eq("name.node"))).thenReturn(new TestTokenVerifier(new DelegationTokenIdentifier()));
+    
+    // Send request and expect InvalidToken error.
+    LambdaTestUtils.intercept(SecretManager.InvalidToken.class,
+        () -> JspHelper.getUGI(context, request, conf));
+  }
+
+  private Token<AbstractDelegationTokenIdentifier> createTestToken(int id) {
+    DelegationTokenIdentifier tokenId = new DelegationTokenIdentifier(new Text("owner_" + id),
+        new Text("renewer_" + id), new Text("realuser_" + id));
+    return new Token<>(tokenId.getBytes(), ("password_" + id).getBytes(),
+        DelegationTokenIdentifier.HDFS_DELEGATION_KIND, new Text("service_" + id));
   }
 
   @Test
@@ -523,6 +598,21 @@ public class TestJspHelper {
     }
     ProxyUsers.refreshSuperUserGroupsConfiguration(conf);
     return JspHelper.getRemoteAddr(req);
+  }
+
+  static class TestTokenVerifier implements TokenVerifier<DelegationTokenIdentifier> {
+    private final DelegationTokenIdentifier expectedId;
+    public TestTokenVerifier(DelegationTokenIdentifier expectedId) {
+      this.expectedId = expectedId;
+    }
+
+    @Override
+    public void verifyToken(DelegationTokenIdentifier delegationTokenIdentifier, byte[] password)
+        throws IOException {
+      if (!delegationTokenIdentifier.equals(expectedId)) {
+        throw new SecretManager.InvalidToken("Received test token that should not be used");
+      }
+    }
   }
 }
 

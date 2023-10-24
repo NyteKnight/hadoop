@@ -86,7 +86,9 @@ public abstract class SQLDelegationTokenSecretManager<TokenIdent
         conf.getLong(DelegationTokenManager.RENEW_INTERVAL,
             DelegationTokenManager.RENEW_INTERVAL_DEFAULT) * 1000,
         conf.getLong(DelegationTokenManager.REMOVAL_SCAN_INTERVAL,
-            DelegationTokenManager.REMOVAL_SCAN_INTERVAL_DEFAULT) * 1000);
+            DelegationTokenManager.REMOVAL_SCAN_INTERVAL_DEFAULT) * 1000,
+        conf.getBoolean(DelegationTokenManager.ENABLE_BUNDLED_TOKENS,
+            DelegationTokenManager.ENABLE_BUNDLED_TOKENS_DEFAULT));
 
     this.seqNumBatchSize = conf.getInt(SQL_DTSM_TOKEN_SEQNUM_BATCH_SIZE,
         DEFAULT_SEQ_NUM_BATCH_SIZE);

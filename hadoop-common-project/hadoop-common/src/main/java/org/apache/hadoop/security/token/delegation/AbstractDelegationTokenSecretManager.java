@@ -83,6 +83,11 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
    * to DelegationTokenInformation. Protected by this object lock.
    */
   protected Map<TokenIdent, DelegationTokenInformation> currentTokens;
+
+  /**
+   * Whether secret managers should attempt to parse BundledTokenIdentifiers.
+   */
+  private boolean enableBundledTokens;
   
   /**
    * Sequence number to create DelegationTokenIdentifier.
@@ -145,6 +150,27 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
     this.currentTokens = new ConcurrentHashMap<>();
   }
 
+  /**
+   * Create a secret manager.
+   * @param delegationKeyUpdateInterval the number of milliseconds for rolling
+   *        new secret keys.
+   * @param delegationTokenMaxLifetime the maximum lifetime of the delegation
+   *        tokens in milliseconds
+   * @param delegationTokenRenewInterval how often the tokens must be renewed
+   *        in milliseconds
+   * @param delegationTokenRemoverScanInterval how often the tokens are scanned
+   *        for expired tokens in milliseconds
+   * @param enableBundledTokens whether secret managers should attempt to parse
+   *        BundledTokenIdentifiers.
+   */
+  public AbstractDelegationTokenSecretManager(long delegationKeyUpdateInterval,
+      long delegationTokenMaxLifetime, long delegationTokenRenewInterval,
+      long delegationTokenRemoverScanInterval, boolean enableBundledTokens) {
+    this(delegationKeyUpdateInterval, delegationTokenMaxLifetime, delegationTokenRenewInterval,
+        delegationTokenRemoverScanInterval);
+    this.enableBundledTokens = enableBundledTokens;
+  }
+
   /** should be called before this object is used */
   public void startThreads() throws IOException {
     Preconditions.checkState(!running);
@@ -179,6 +205,13 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
    */
   protected long getTokenRenewInterval() {
     return this.tokenRenewInterval;
+  }
+
+  /**
+   * Whether secret managers should attempt to parse BundledTokenIdentifiers.
+   */
+  protected boolean isEnableBundledTokens() {
+    return this.enableBundledTokens;
   }
 
   /** 
