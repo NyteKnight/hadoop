@@ -1,8 +1,14 @@
 package org.apache.hadoop.security.token.delegation;
 
 import java.io.IOException;
+import org.apache.hadoop.metrics2.annotation.Metric;
+import org.apache.hadoop.metrics2.annotation.Metrics;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.metrics2.lib.MetricsRegistry;
+import org.apache.hadoop.metrics2.lib.MutableRate;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
+import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +21,8 @@ import org.slf4j.LoggerFactory;
  */
 public class BundledTokenAuthenticator {
   public static final Logger LOG = LoggerFactory.getLogger(BundledTokenAuthenticator.class);
+  private static final BundledTokenAuthenticatorMetrics METRICS
+      = BundledTokenAuthenticatorMetrics.create();
   private BundledTokenIdentifier bundledTokenIdentifier;
   private boolean hasInnerTokens;
   private TokenVerifierFunction verifyFunction;
@@ -60,13 +68,18 @@ public class BundledTokenAuthenticator {
    */
   public Token<?> extractMatchingInnerToken()
       throws IOException {
+    long start = Time.monotonicNow();
+    int attempts = 0;
     IOException firstExc = null;
     for (Token<?> innerToken : this.bundledTokenIdentifier.getInnerTokens()) {
       try {
+        attempts++;
         TokenIdentifier tokenIdentifier = innerToken.decodeIdentifier();
         this.verifyFunction.execute(tokenIdentifier, innerToken.getPassword());
         
-        LOG.info("Authenticated with token for service: {}", innerToken.getService());
+        LOG.info("Found inner token for service: {} after {} attempt(s)",
+            innerToken.getService(), attempts);
+        METRICS.trackInnerTokenFound(start);
         return innerToken;
       } catch (IOException it) {
         if (firstExc == null) {
@@ -74,7 +87,38 @@ public class BundledTokenAuthenticator {
         }
       }
     }
-    
+
+    METRICS.trackInnerTokenNotFound(start);
     throw firstExc != null ? firstExc : new IOException("No innerTokens used for authentication");
+  }
+
+  @Metrics(about="Bundled token authenticator metrics", context="bundledtokenauth")
+  static class BundledTokenAuthenticatorMetrics {
+    private static final String METRICS_NAME = "BundledTokenAuthenticator";
+    private final MetricsRegistry registry;
+
+    @Metric("Found matching inner token")
+    private MutableRate innerTokenFound;
+
+    @Metric("Not found matching inner token")
+    private MutableRate innerTokenNotFound;
+
+    BundledTokenAuthenticatorMetrics() {
+      this.registry = new MetricsRegistry(METRICS_NAME);
+      LOG.debug(registry.info().toString());
+    }
+
+    static BundledTokenAuthenticatorMetrics create() {
+      BundledTokenAuthenticatorMetrics metrics = new BundledTokenAuthenticatorMetrics();
+      return DefaultMetricsSystem.instance().register(METRICS_NAME, null, metrics);
+    }
+
+    void trackInnerTokenFound(long start) {
+      this.innerTokenFound.add(Time.monotonicNow() - start);
+    }
+
+    void trackInnerTokenNotFound(long start) {
+      this.innerTokenNotFound.add(Time.monotonicNow() - start);
+    }
   }
 }

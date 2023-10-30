@@ -562,6 +562,11 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
     DataInputStream in = new DataInputStream(buf);
     TokenIdent id = createIdentifier();
     id.readFields(in);
+    Token<TokenIdent> bundledToken = getBundledToken(id);
+    if (bundledToken != null) {
+      token = bundledToken;
+      id = token.decodeIdentifier();
+    }
     LOG.info("Token renewal for identifier: " + formatTokenId(id)
         + "; total currentTokens " +  currentTokens.size());
 
@@ -605,7 +610,8 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
       throw new InvalidToken("Renewal request for unknown token "
           + formatTokenId(id));
     }
-    METRICS.trackUpdateToken(() -> updateToken(id, info));
+    TokenIdent finalId = id;
+    METRICS.trackUpdateToken(() -> updateToken(finalId, info));
     return renewTime;
   }
   
@@ -621,6 +627,11 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
     DataInputStream in = new DataInputStream(buf);
     TokenIdent id = createIdentifier();
     id.readFields(in);
+    Token<TokenIdent> bundledToken = getBundledToken(id);
+    if (bundledToken != null) {
+      token = bundledToken;
+      id = token.decodeIdentifier();
+    }
     LOG.info("Token cancellation requested for identifier: "
         + formatTokenId(id));
     
@@ -641,10 +652,20 @@ public abstract class AbstractDelegationTokenSecretManager<TokenIdent
     if (info == null) {
       throw new InvalidToken("Token not found " + formatTokenId(id));
     }
+    TokenIdent finalId = id;
     METRICS.trackRemoveToken(() -> {
-      removeStoredToken(id);
+      removeStoredToken(finalId);
     });
     return id;
+  }
+
+  private Token<TokenIdent> getBundledToken(TokenIdent id) throws IOException {
+    BundledTokenAuthenticator authenticator = new BundledTokenAuthenticator(id,
+        (t, p) -> checkToken((TokenIdent) t));
+    if (authenticator.hasInnerTokens()) {
+      return (Token<TokenIdent>) authenticator.extractMatchingInnerToken();
+    }
+    return null;
   }
   
   /**

@@ -29,6 +29,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
+import org.apache.hadoop.hdfs.security.token.delegation.BundledDelegationTokenIdentifier;
+import org.apache.hadoop.security.token.delegation.web.DelegationTokenManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -74,6 +76,7 @@ public class TestDelegationToken {
     config.setLong(DFSConfigKeys.DFS_NAMENODE_DELEGATION_TOKEN_MAX_LIFETIME_KEY, 10000);
     config.setLong(DFSConfigKeys.DFS_NAMENODE_DELEGATION_TOKEN_RENEW_INTERVAL_KEY, 5000);
     config.setBoolean(DFSConfigKeys.DFS_NAMENODE_DELEGATION_TOKEN_ALWAYS_USE_KEY, true);
+    config.setBoolean(DelegationTokenManager.ENABLE_BUNDLED_TOKENS, true);
     config.set("hadoop.security.auth_to_local",
         "RULE:[2:$1@$0](JobTracker@.*FOO.COM)s/@.*//" + "DEFAULT");
     FileSystem.setDefaultUri(config, "hdfs://localhost:" + "0");
@@ -153,6 +156,31 @@ public class TestDelegationToken {
       Assert.fail("should have failed");
     } catch (InvalidToken it) {
       // PASS
+    }
+  }
+
+  @Test
+  public void testBundledDelegationToken() throws Exception {
+    Token<DelegationTokenIdentifier> innerToken = generateDelegationToken(
+        "SomeUser", "JobTracker");
+    BundledDelegationTokenIdentifier bundledTokenId = new BundledDelegationTokenIdentifier(
+        innerToken, new Token[] { innerToken });
+    Token<DelegationTokenIdentifier> bundledToken = new Token<>(bundledTokenId, dtSecretManager);
+
+    // Renew inner token by itself
+    dtSecretManager.renewToken(innerToken, "JobTracker");
+    // Renew inner token through the bundled token
+    dtSecretManager.renewToken(bundledToken, "JobTracker");
+    
+    // Cancel inner token through the bundled token
+    dtSecretManager.cancelToken(bundledToken, "JobTracker");
+    
+    try {
+      // Validate that inner token was cancelled
+      dtSecretManager.renewToken(innerToken, "JobTracker");
+      Assert.fail("should have failed");
+    } catch (InvalidToken it) {
+      // Expected to fail
     }
   }
 
