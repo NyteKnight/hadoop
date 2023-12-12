@@ -79,7 +79,7 @@ public class BundledTokenAuthenticator {
         
         LOG.info("Found inner token for service: {} after {} attempt(s)",
             innerToken.getService(), attempts);
-        METRICS.trackInnerTokenFound(start);
+        METRICS.trackInnerTokenFound(Time.monotonicNow() - start);
         return innerToken;
       } catch (IOException it) {
         if (firstExc == null) {
@@ -88,7 +88,7 @@ public class BundledTokenAuthenticator {
       }
     }
 
-    METRICS.trackInnerTokenNotFound(start);
+    METRICS.trackInnerTokenNotFound(Time.monotonicNow() - start);
     throw firstExc != null ? firstExc : new IOException("No innerTokens used for authentication");
   }
 
@@ -113,12 +113,12 @@ public class BundledTokenAuthenticator {
       return DefaultMetricsSystem.instance().register(METRICS_NAME, null, metrics);
     }
 
-    void trackInnerTokenFound(long start) {
-      this.innerTokenFound.add(Time.monotonicNow() - start);
+    void trackInnerTokenFound(long duration) {
+      this.innerTokenFound.add(duration);
     }
 
-    void trackInnerTokenNotFound(long start) {
-      this.innerTokenNotFound.add(Time.monotonicNow() - start);
+    void trackInnerTokenNotFound(long duration) {
+      this.innerTokenNotFound.add(duration);
     }
   }
 }
