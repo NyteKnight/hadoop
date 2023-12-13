@@ -73,15 +73,15 @@ public class BundledTokenAuthenticator {
     IOException firstExc = null;
     for (Token<?> innerToken : this.bundledTokenIdentifier.getInnerTokens()) {
       try {
-        attempts++;
         TokenIdentifier tokenIdentifier = innerToken.decodeIdentifier();
         this.verifyFunction.execute(tokenIdentifier, innerToken.getPassword());
         
-        LOG.info("Found inner token for service: {} after {} attempt(s)",
+        LOG.info("Found inner token for service: {} at index {}",
             innerToken.getService(), attempts);
         METRICS.trackInnerTokenFound(Time.monotonicNow() - start);
         return innerToken;
       } catch (IOException it) {
+        attempts++;
         if (firstExc == null) {
           firstExc = it;
         }
