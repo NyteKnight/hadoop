@@ -86,6 +86,7 @@ import org.apache.hadoop.ipc.StandbyException;
 import org.apache.hadoop.net.ConnectTimeoutException;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Time;
 import org.eclipse.jetty.util.ajax.JSON;
 import org.slf4j.Logger;
@@ -649,8 +650,8 @@ public class RouterRpcClient {
 
   /**
    * For tracking which is the actual client address.
-   * It adds trace info "clientIp:ip" , "clientPort:port" and "realUser:userName".
-   * in the caller context, removing the old values if they were
+   * It adds trace info "clientIp:ip" , "clientPort:port", "realUser:userName", "clientId:id"
+   * and "clientCallId:callId" in the caller context, removing the old values if they were
    * already present.
    */
   private void addClientInfoToCallerContext(UserGroupInformation ugi) {
@@ -667,6 +668,8 @@ public class RouterRpcClient {
             .append(CallerContext.CLIENT_PORT_STR,
                 Integer.toString(Server.getRemotePort()))
             .append(CallerContext.REAL_USER_STR, realUser)
+            .append(CallerContext.CLIENT_ID_STR, StringUtils.byteToHexString(Server.getClientId()))
+            .append(CallerContext.CLIENT_CALL_ID_STR, Integer.toString(Server.getCallId()))
             .setSignature(origSignature);
     // Append the original caller context
     if (origContext != null) {
