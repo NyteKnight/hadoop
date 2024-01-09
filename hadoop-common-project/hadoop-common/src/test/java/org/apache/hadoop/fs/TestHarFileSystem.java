@@ -250,6 +250,8 @@ public class TestHarFileSystem {
 
     MultipartUploaderBuilder createMultipartUploader(Path basePath)
         throws IOException;
+
+    Path getEnclosingRoot(Path path) throws IOException;
   }
 
   @Test

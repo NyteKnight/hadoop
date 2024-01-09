@@ -143,6 +143,9 @@ public class RouterClientProtocol implements ClientProtocol {
   /** Time out when getting the mount statistics. */
   private long mountStatusTimeOut;
 
+  /** Default nameservice enabled. */
+  private final boolean defaultNameServiceEnabled;
+
   /** Identifier for the super user. */
   private String superUser;
   /** Identifier for the super group. */
@@ -191,6 +194,9 @@ public class RouterClientProtocol implements ClientProtocol {
     this.snapshotProto = new RouterSnapshot(rpcServer);
     this.routerCacheAdmin = new RouterCacheAdmin(rpcServer);
     this.securityManager = rpcServer.getRouterSecurityManager();
+    this.defaultNameServiceEnabled = conf.getBoolean(
+        RBFConfigKeys.DFS_ROUTER_DEFAULT_NAMESERVICE_ENABLE,
+        RBFConfigKeys.DFS_ROUTER_DEFAULT_NAMESERVICE_ENABLE_DEFAULT);
   }
 
   @Override
@@ -1841,6 +1847,33 @@ public class RouterClientProtocol implements ClientProtocol {
   @Override
   public void satisfyStoragePolicy(String path) throws IOException {
     storagePolicy.satisfyStoragePolicy(path);
+  }
+
+  @Override
+  public Path getEnclosingRoot(String src) throws IOException {
+    Path mountPath = null;
+    if (defaultNameServiceEnabled) {
+      mountPath = new Path("/");
+    }
+
+    if (subclusterResolver instanceof MountTableResolver) {
+      MountTableResolver mountTable = (MountTableResolver) subclusterResolver;
+      if (mountTable.getMountPoint(src) != null) {
+        mountPath = new Path(mountTable.getMountPoint(src).getSourcePath());
+      }
+    }
+
+    if (mountPath == null) {
+      throw new IOException(String.format("No mount point for %s", src));
+    }
+
+    EncryptionZone zone = getEZForPath(src);
+    if (zone == null) {
+      return mountPath;
+    } else {
+      Path zonePath = new Path(zone.getPath());
+      return zonePath.depth() > mountPath.depth() ? zonePath : mountPath;
+    }
   }
 
   @Override

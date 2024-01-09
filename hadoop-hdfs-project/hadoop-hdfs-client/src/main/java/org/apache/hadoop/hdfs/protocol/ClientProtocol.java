@@ -26,6 +26,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.fs.BatchedRemoteIterator.BatchedEntries;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 import org.apache.hadoop.ha.HAServiceProtocol;
 import org.apache.hadoop.hdfs.AddBlockFlag;
@@ -1864,4 +1865,12 @@ public interface ClientProtocol {
    */
   @AtMostOnce
   void satisfyStoragePolicy(String path) throws IOException;
+
+  /**
+   * Get the enclosing root for a path.
+   */
+  @Idempotent
+  @ReadOnly(isCoordinated = true)
+  Path getEnclosingRoot(String src) throws IOException;
+
 }
