@@ -126,7 +126,9 @@ public class RpcMetrics {
   MutableCounterLong rpcAuthorizationSuccesses;
   @Metric("Number of client backoff requests")
   MutableCounterLong rpcClientBackoff;
-  @Metric("Number of Slow RPC calls")
+  @Metric("Number of disconnected client backoff requests")
+  MutableCounterLong rpcClientBackoffDisconnected;
+  @Metric("Number of slow RPC calls")
   MutableCounterLong rpcSlowCalls;
 
   @Metric("Number of successful RPC calls")
@@ -294,6 +296,22 @@ public class RpcMetrics {
   public void incrClientBackoff() {
     rpcClientBackoff.incr();
   }
+
+  /**
+   * Client was disconnected due to backoff
+   */
+  public void incrClientBackoffDisconnected() {
+    rpcClientBackoffDisconnected.incr();
+  }
+
+  /**
+   * Returns the number of disconnected backoffs.
+   * @return long
+   */
+  public long getClientBackoffDisconnected() {
+    return rpcClientBackoffDisconnected.value();
+  }
+
 
   /**
    * Increments the Slow RPC counter.
