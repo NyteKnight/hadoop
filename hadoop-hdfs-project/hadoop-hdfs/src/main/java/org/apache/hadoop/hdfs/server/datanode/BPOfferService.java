@@ -773,7 +773,8 @@ class BPOfferService {
           ((BlockRecoveryCommand)cmd).getRecoveringBlocks());
       break;
     case DatanodeProtocol.DNA_ACCESSKEYUPDATE:
-      LOG.info("DatanodeCommand action: DNA_ACCESSKEYUPDATE");
+      LOG.info("DatanodeCommand action from active NN {}: DNA_ACCESSKEYUPDATE",
+          actor.getNNSocketAddress());
       if (dn.isBlockTokenEnabled) {
         dn.blockPoolTokenSecretManager.addKeys(
             getBlockPoolId(), 
@@ -813,7 +814,8 @@ class BPOfferService {
       BPServiceActor actor) throws IOException {
     switch(cmd.getAction()) {
     case DatanodeProtocol.DNA_ACCESSKEYUPDATE:
-      LOG.info("DatanodeCommand action from standby: DNA_ACCESSKEYUPDATE");
+      LOG.info("DatanodeCommand action from standby NN {}: DNA_ACCESSKEYUPDATE",
+          actor.getNNSocketAddress());
       if (dn.isBlockTokenEnabled) {
         dn.blockPoolTokenSecretManager.addKeys(
             getBlockPoolId(), 
