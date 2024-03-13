@@ -28,6 +28,7 @@ import static org.apache.hadoop.hdfs.server.federation.fairness.RouterRpcFairnes
 import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -457,26 +458,24 @@ public class RouterRpcClient {
    * @param ioe IOException reported.
    * @param retryCount Number of retries.
    * @param nsId Nameservice ID.
-   * @return Retry decision.
+   * @return Retry action.
    * @throws NoNamenodesAvailableException Exception that the retry policy
    *         generates for no available namenodes.
    */
-  private RetryDecision shouldRetry(final IOException ioe, final int retryCount,
+  private RetryPolicy.RetryAction shouldRetry(final IOException ioe, final int retryCount,
       final String nsId) throws IOException {
     // check for the case of cluster unavailable state
     if (isClusterUnAvailable(nsId)) {
       // we allow to retry once if cluster is unavailable
       if (retryCount == 0) {
-        return RetryDecision.RETRY;
+        return new RetryPolicy.RetryAction(RetryDecision.RETRY, 0);
       } else {
         throw new NoNamenodesAvailableException(nsId, ioe);
       }
     }
 
     try {
-      final RetryPolicy.RetryAction a =
-          this.retryPolicy.shouldRetry(ioe, retryCount, 0, true);
-      return a.action;
+      return this.retryPolicy.shouldRetry(ioe, retryCount, 0, true);
     } catch (Exception ex) {
       LOG.error("Re-throwing API exception, no more retries", ex);
       throw toIOException(ex);
@@ -714,8 +713,11 @@ public class RouterRpcClient {
         IOException ioe = (IOException) cause;
 
         // Check if we should retry.
-        RetryDecision decision = shouldRetry(ioe, retryCount, nsId);
+        RetryPolicy.RetryAction action = shouldRetry(ioe, retryCount, nsId);
+        RetryDecision decision = action.action;
         if (decision == RetryDecision.RETRY) {
+          processRetryBackoff(action.delayMillis);
+
           if (this.rpcMonitor != null) {
             this.rpcMonitor.proxyOpRetries();
           }
@@ -723,6 +725,8 @@ public class RouterRpcClient {
           // retry
           return invoke(nsId, ++retryCount, method, obj, params);
         } else if (decision == RetryDecision.FAILOVER_AND_RETRY) {
+          processRetryBackoff(action.delayMillis);
+
           // failover, invoker looks for standby exceptions for failover.
           if (ioe instanceof StandbyException) {
             throw ioe;
@@ -1161,6 +1165,26 @@ public class RouterRpcClient {
     }
 
     return ioe;
+  }
+
+  /**
+   * Processes backoff between retries
+   * @param millis Backoff time in millis
+   * @throws InterruptedIOException is thrown if the backoff is interrupted
+   */
+  private void processRetryBackoff(long millis) throws InterruptedIOException {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Backing off retry action unexpectedly interrupted", e);
+      }
+      InterruptedIOException intIOE = new InterruptedIOException(
+          "Retry interrupted");
+      intIOE.initCause(e);
+      throw intIOE;
+    }
   }
 
   /**
