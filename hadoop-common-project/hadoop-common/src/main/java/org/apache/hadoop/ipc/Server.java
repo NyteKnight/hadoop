@@ -877,7 +877,7 @@ public abstract class Server {
      *
      * @return true
      */
-    boolean isOpen() {
+    public boolean isOpen() {
       return true;
     }
 
@@ -1018,6 +1018,13 @@ public abstract class Server {
     public long getTimestampNanos() {
       return timestampNanos;
     }
+
+    /**
+     * Connection of the incoming peer making the call
+     */
+    public Connection getConnection() {
+      return null;
+    }
   }
 
   /** A RPC extended call queued for handling. */
@@ -1056,7 +1063,7 @@ public abstract class Server {
     }
 
     @Override
-    boolean isOpen() {
+    public boolean isOpen() {
       return connection.channel.isOpen();
     }
 
@@ -1079,6 +1086,11 @@ public abstract class Server {
     @Override
     public InetAddress getHostInetAddress() {
       return connection.getHostInetAddress();
+    }
+
+    @Override
+    public Connection getConnection() {
+      return connection;
     }
 
     @Override
@@ -1994,6 +2006,10 @@ public abstract class Server {
 
     public Server getServer() {
       return Server.this;
+    }
+
+    public SocketChannel getChannel() {
+      return channel;
     }
 
     /* Return true if the connection has no outstanding rpc */

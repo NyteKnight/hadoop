@@ -65,6 +65,7 @@ import org.apache.hadoop.hdfs.server.federation.resolver.FederationNamenodeServi
 import org.apache.hadoop.hdfs.server.federation.resolver.MountTableManager;
 import org.apache.hadoop.hdfs.server.federation.resolver.NamenodeStatusReport;
 import org.apache.hadoop.hdfs.server.federation.resolver.order.DestinationOrder;
+import org.apache.hadoop.hdfs.server.federation.router.ConnectionContext;
 import org.apache.hadoop.hdfs.server.federation.router.ConnectionManager;
 import org.apache.hadoop.hdfs.server.federation.router.Router;
 import org.apache.hadoop.hdfs.server.federation.router.RouterClient;
@@ -83,6 +84,7 @@ import org.apache.hadoop.hdfs.server.federation.store.protocol.GetMountTableEntr
 import org.apache.hadoop.hdfs.server.federation.store.records.MountTable;
 import org.apache.hadoop.hdfs.server.federation.store.records.RouterState;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
+import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.test.GenericTestUtils;
@@ -397,6 +399,64 @@ public final class FederationTestUtils {
 
     Whitebox.setInternalState(rpcClient, "connectionManager",
         spyConnectionManager);
+  }
+
+  /**
+   * Simulate that a RouterRpcServer, connection between it and client is
+   * closed before sending rpc to namenode.
+   * @param server RouterRpcServer
+   * @param reservedRpcClientList the list of original rpcClient
+   * @throws IOException
+   */
+  public static void simulateClientConnectionClose(
+      final RouterRpcServer server,
+      final List<RouterRpcClient> reservedRpcClientList)
+      throws IOException {
+    RouterRpcClient rpcClient = server.getRPCClient();
+    RouterRpcClient spyClient = spy(rpcClient);
+    doAnswer(new Answer() {
+      @Override
+      public Object answer(InvocationOnMock invocation) throws Throwable {
+        UserGroupInformation ugi =
+            invocation.getArgument(0, UserGroupInformation.class);
+        String nsId = invocation.getArgument(1, String.class);
+        String rpcAddress = invocation.getArgument(2, String.class);
+        Class cls = invocation.getArgument(3, Class.class);
+
+        ConnectionContext connection = null;
+        UserGroupInformation connUGI = ugi;
+        if (UserGroupInformation.isSecurityEnabled()) {
+          UserGroupInformation routerUser = UserGroupInformation.getLoginUser();
+          connUGI = UserGroupInformation.createProxyUser(
+              ugi.getUserName(), routerUser);
+        }
+        connection = spyClient.getConnectionManager()
+            .getConnection(connUGI, rpcAddress, cls, nsId);
+
+        // Close the connection channel of current call
+        Server.Call curCall = Server.getCurCall().get();
+        if (curCall.getConnection() != null) {
+          curCall.getConnection().getChannel().close();
+        }
+        return connection;
+      }
+    }).when(spyClient).getConnection(any(UserGroupInformation.class),
+        any(String.class), any(String.class), any(Class.class));
+
+    reservedRpcClientList.add(rpcClient);
+    Whitebox.setInternalState(server.getClientProtocolModule(),
+        "rpcClient", spyClient);
+  }
+
+  /**
+   * Recovery the rpcClient of RouterRpcServer.
+   * @param server RouterRpcServer
+   * @param rpcClient RpcClient
+   */
+  public static void recoveryClientConnection(final RouterRpcServer server,
+      final RouterRpcClient rpcClient) {
+    Whitebox.setInternalState(server.getClientProtocolModule(),
+        "rpcClient", rpcClient);
   }
 
   /**

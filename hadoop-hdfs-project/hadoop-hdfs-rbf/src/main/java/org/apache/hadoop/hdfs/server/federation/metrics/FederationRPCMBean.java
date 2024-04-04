@@ -142,4 +142,10 @@ public interface FederationRPCMBean {
    * @return Number of operations accepted of each namespace.
    */
   String getProxyOpPermitAcceptedPerNs();
+
+  /**
+   * Get the number of operations skipped due to incoming peer closing its Connection Channel.
+   * @return Number of operations skipped due to incoming peer closing its Connection Channel.
+   */
+  long getSkippedProxyOpPeerClosedChannel();
 }

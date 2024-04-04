@@ -17,12 +17,15 @@
  */
 package org.apache.hadoop.hdfs.server.federation.router;
 
+import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.recoveryClientConnection;
+import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.simulateClientConnectionClose;
 import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.simulateSlowNamenode;
 import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.simulateThrowExceptionRouterRpcServer;
 import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.transitionClusterNSToStandby;
 import static org.apache.hadoop.hdfs.server.federation.FederationTestUtils.transitionClusterNSToActive;
 import static org.apache.hadoop.test.GenericTestUtils.assertExceptionContains;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -82,7 +85,7 @@ public class TestRouterClientRejectOverload {
   @Rule
   public ExpectedException exceptionRule = ExpectedException.none();
 
-  private void setupCluster(boolean overloadControl, boolean ha)
+  private void setupCluster(boolean overloadControl, boolean ha, boolean skipClosedConnections)
       throws Exception {
     // Build and start a federated cluster
     cluster = new StateStoreDFSCluster(ha, 2);
@@ -99,6 +102,8 @@ public class TestRouterClientRejectOverload {
     // Overload control
     routerConf.setBoolean(
         RBFConfigKeys.DFS_ROUTER_CLIENT_REJECT_OVERLOAD, overloadControl);
+    routerConf.setBoolean(
+        RBFConfigKeys.DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED, skipClosedConnections);
 
     // No need for datanodes as we use renewLease() for testing
     cluster.setNumDatanodesPerNameservice(0);
@@ -111,7 +116,7 @@ public class TestRouterClientRejectOverload {
 
   @Test
   public void testWithoutOverloadControl() throws Exception {
-    setupCluster(false, false);
+    setupCluster(false, false, false);
 
     // Nobody should get overloaded
     testOverloaded(0);
@@ -134,7 +139,7 @@ public class TestRouterClientRejectOverload {
 
   @Test
   public void testOverloadControl() throws Exception {
-    setupCluster(true, false);
+    setupCluster(true, false, false);
 
     List<RouterContext> routers = cluster.getRouters();
     FederationRPCMetrics rpcMetrics0 =
@@ -257,7 +262,7 @@ public class TestRouterClientRejectOverload {
 
   @Test
   public void testConnectionNullException() throws Exception {
-    setupCluster(false, false);
+    setupCluster(false, false, false);
 
     // Choose 1st router
     RouterContext routerContext = cluster.getRouters().get(0);
@@ -300,7 +305,7 @@ public class TestRouterClientRejectOverload {
    */
   @Test
   public void testNoNamenodesAvailable() throws Exception{
-    setupCluster(false, true);
+    setupCluster(false, true, false);
 
     transitionClusterNSToStandby(cluster);
 
@@ -362,7 +367,7 @@ public class TestRouterClientRejectOverload {
 
   @Test
   public void testAsyncCallerPoolMetrics() throws Exception {
-    setupCluster(true, false);
+    setupCluster(true, false, false);
     simulateSlowNamenode(cluster.getCluster().getNameNode(0), 2);
     final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -425,5 +430,41 @@ public class TestRouterClientRejectOverload {
     } finally {
       exec.shutdown();
     }
+  }
+
+  @Test
+  public void testClientConnnectionClose() throws Exception {
+    setupCluster(false, false, true);
+
+    int size = cluster.getRouters().size();
+    List<RouterRpcClient> reservedRpcClientList = new ArrayList<>(size);
+
+    // Simulate client connection close.
+    for (int i = 0; i < size; ++i) {
+      RouterRpcServer server =
+          cluster.getRouters().get(i).getRouter().getRpcServer();
+      simulateClientConnectionClose(server, reservedRpcClientList);
+    }
+
+    Configuration conf = cluster.getRouterClientConf();
+    // Fail fast
+    conf.setInt("dfs.client.failover.max.attempts", 0);
+
+    DFSClient routerClient = new DFSClient(new URI("hdfs://fed"), conf);
+
+    // RPC call must fail
+    try {
+      routerClient.create("/testClientConnectionClose", true);
+    } catch (Exception e) {
+    }
+
+    // Recovery the rpcClient of RouterRpcServer
+    for (int i = 0; i < size; ++i) {
+      RouterRpcServer server =
+          cluster.getRouters().get(i).getRouter().getRpcServer();
+      recoveryClientConnection(server, reservedRpcClientList.get(i));
+    }
+
+    assertFalse(routerClient.exists("/testClientConnectionClose"));
   }
 }

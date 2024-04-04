@@ -78,6 +78,9 @@ public class FederationRPCMetrics implements FederationRPCMBean {
 
   @Metric("Number of operations to hit permit limits")
   private MutableCounterLong proxyOpPermitRejected;
+  
+  @Metric("Number of RPCs skipped due to incoming peer closing its Connection Channel prior to RPC invocation")
+  private MutableCounterLong skippedProxyOpPeerClosedChannel;
 
   public FederationRPCMetrics(Configuration conf, RouterRpcServer rpcServer) {
     this.rpcServer = rpcServer;
@@ -321,5 +324,14 @@ public class FederationRPCMetrics implements FederationRPCMBean {
   @Override
   public String getProxyOpPermitAcceptedPerNs() {
     return rpcServer.getRPCClient().getAcceptedPermitsPerNsJSON();
+  }
+
+  public void incrSkippedProxyOpPeerClosedChannel() {
+    skippedProxyOpPeerClosedChannel.incr();
+  }
+  
+  @Override
+  public long getSkippedProxyOpPeerClosedChannel() {
+    return skippedProxyOpPeerClosedChannel.value();
   }
 }

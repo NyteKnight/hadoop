@@ -372,4 +372,10 @@ public class RBFConfigKeys extends CommonConfigurationKeysPublic {
       NoRouterRpcFairnessPolicyController.class;
   public static final String DFS_ROUTER_FAIR_HANDLER_COUNT_KEY_PREFIX =
       FEDERATION_ROUTER_FAIRNESS_PREFIX + "handler.count.";
+  
+  // LIHADOOP-75599 : Feature flag to enable skipping RPCs upon closed connection of incoming peer to this router
+  public static final String DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED =
+      FEDERATION_ROUTER_PREFIX + "client.skip-closed-connection-rpc.enabled";
+  public static final boolean DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED_DEFAULT = false;
+  
 }

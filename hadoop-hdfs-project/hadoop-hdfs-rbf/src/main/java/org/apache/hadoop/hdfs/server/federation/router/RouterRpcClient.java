@@ -161,6 +161,8 @@ public class RouterRpcClient {
   private Map<String, LongAdder> acceptedPermitsPerNs = new ConcurrentHashMap<>();
 
   private final boolean enableProxyUser;
+  
+  private final boolean skipClosedConnectionRpc;
 
   /**
    * Create a router RPC client to manage remote procedure calls to NNs.
@@ -244,6 +246,10 @@ public class RouterRpcClient {
           activeNNStateIdRefreshPeriodMs);
     }
     this.lastActiveNNRefreshTimes = new ConcurrentHashMap<>();
+    
+    this.skipClosedConnectionRpc = conf.getBoolean(
+        RBFConfigKeys.DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED,
+        RBFConfigKeys.DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED_DEFAULT);
   }
 
   /**
@@ -372,6 +378,15 @@ public class RouterRpcClient {
   }
 
   /**
+   * Get the connectionManager of this client.
+   * @return connectionManager.
+   */
+  @VisibleForTesting
+  public ConnectionManager getConnectionManager() {
+    return connectionManager;
+  }
+
+  /**
    * JSON representation of the rejected permits for each nameservice.
    *
    * @return String representation of the rejected permits for each nameservice.
@@ -401,7 +416,8 @@ public class RouterRpcClient {
    *         NN + current user.
    * @throws IOException If we cannot get a connection to the NameNode.
    */
-  private ConnectionContext getConnection(UserGroupInformation ugi, String nsId,
+  @VisibleForTesting
+  public ConnectionContext getConnection(UserGroupInformation ugi, String nsId,
       String rpcAddress, Class<?> proto) throws IOException {
     ConnectionContext connection = null;
     try {
@@ -534,6 +550,24 @@ public class RouterRpcClient {
         connection = this.getConnection(ugi, nsId, rpcAddress, protocol);
         ProxyAndInfo<?> client = connection.getClient();
         final Object proxy = client.getProxy();
+        
+        // LIHADOOP-75599: Check to see if the incoming peer is still open before trying to issue the RPC Call.
+        if (skipClosedConnectionRpc) {
+          final Call curCall = Server.getCurCall().get();
+          if (curCall != null && !curCall.isOpen()) {
+            String msg = "Aborting " + method.getName() + " due to Closed Connection Channel of incoming caller peer "
+                + CallerContext.CLIENT_IP_STR + "=" + Server.getRemoteAddress() + ", "
+                + CallerContext.CLIENT_PORT_STR + "=" + Integer.toString(Server.getRemotePort()) + ", "
+                + CallerContext.CLIENT_ID_STR + "=" + StringUtils.byteToHexString(Server.getClientId()) + ", "
+                + CallerContext.CLIENT_CALL_ID_STR + "=" + Integer.toString(Server.getCallId());
+            LOG.info(msg);
+
+            if (rpcMonitor != null) {
+              rpcMonitor.getRPCMetrics().incrSkippedProxyOpPeerClosedChannel();
+            }
+            throw new PeerClosedConnectionChannelException(msg);
+          }
+        }
 
         ret = invoke(nsId, 0, method, proxy, params);
         if (failover &&
@@ -598,6 +632,8 @@ public class RouterRpcClient {
               nsId, rpcAddress, ioe.getMessage());
           // Throw RetriableException so that client can retry
           throw new RetriableException(ioe);
+        } else if (ioe instanceof PeerClosedConnectionChannelException) {
+          throw ioe;
         } else {
           // Other communication error, this is a failure
           // Communication retries are handled by the retry policy
