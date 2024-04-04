@@ -434,14 +434,16 @@ public class CallQueueManager<E extends Schedulable>
   // if the client should be disconnected.
   @SuppressWarnings("serial")
   static class CallQueueOverflowException extends IllegalStateException {
-    private static String TOO_BUSY = "Server too busy";
+    private static String TOO_BUSY = "NameNode is under heavy load and cannot process your request. Your requests should auto retry.";
+    private static String THROTTLE = "You are getting throttled because too many requests are sent to NameNode. Your requests should auto retry.";
+
     static final CallQueueOverflowException KEEPALIVE =
         new CallQueueOverflowException(
             new RetriableException(TOO_BUSY),
             RpcStatusProto.ERROR);
     static final CallQueueOverflowException DISCONNECT =
         new CallQueueOverflowException(
-            new RetriableException(TOO_BUSY + " - disconnecting"),
+            new RetriableException(THROTTLE),
             RpcStatusProto.FATAL);
     static final CallQueueOverflowException FAILOVER =
         new CallQueueOverflowException(
