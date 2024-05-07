@@ -56,6 +56,10 @@ public class TestBundledDelegationTokenIdentifier {
     
     // Validate that no bundled information was found during deserialization.
     assertFalse(bundledTokenId2.hasInnerTokens());
+
+    Token[] actualInnerTokens = bundledTokenId2.getInnerTokens();
+    assertNotNull(actualInnerTokens);
+    assertEquals(0, actualInnerTokens.length);
   }
 
   @Test
