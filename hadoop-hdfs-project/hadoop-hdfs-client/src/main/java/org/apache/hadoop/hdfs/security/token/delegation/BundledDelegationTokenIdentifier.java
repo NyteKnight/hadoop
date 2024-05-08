@@ -23,7 +23,11 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
     implements BundledTokenIdentifier {
 
   // The current VERSION of the token.
-  private static final byte VERSION = 0;
+  private static final byte VERSION = 1;
+
+  // The original serde implementation of this identifier was un-versioned.
+  // This denotes the default version for un-versioned tokens.
+  private static final byte BASE_VERSION = 0;
 
   // The designated main password.
   // This will be empty (byte[0]) if deserialization fails to read any content
@@ -45,9 +49,8 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
   // content for the tokenVersion.
   private byte tokenVersion;
 
-  // The original serde implementation of this identifier was un-versioned.
-  // This denotes the default version for un-versioned tokens.
-  private static final byte BASE_VERSION = 0;
+  // The list of SPIFFE tokens.
+  private Token[] spiffeTokens;
 
   public BundledDelegationTokenIdentifier() {
     super();
@@ -55,12 +58,19 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
 
   public BundledDelegationTokenIdentifier(Token<?> mainToken,
       Token<AbstractDelegationTokenIdentifier>[] tokens) throws IOException {
+    this(mainToken, tokens, new Token[0]);
+  }
+
+  public BundledDelegationTokenIdentifier(Token<?> mainToken,
+      Token<AbstractDelegationTokenIdentifier>[] tokens,
+      Token<SPIFFEDelegationTokenIdentifier>[] spiffeTokens) throws IOException {
     this((AbstractDelegationTokenIdentifier) mainToken.decodeIdentifier(),
-        mainToken.getPassword(), tokens);
+        mainToken.getPassword(), tokens, spiffeTokens);
   }
 
   public BundledDelegationTokenIdentifier(AbstractDelegationTokenIdentifier mainTokenId,
-      byte[] mainPassword, Token<AbstractDelegationTokenIdentifier>[] tokens) throws IOException {
+      byte[] mainPassword, Token<AbstractDelegationTokenIdentifier>[] tokens,
+      Token<SPIFFEDelegationTokenIdentifier>[] spiffeTokens) throws IOException {
     super(mainTokenId.getOwner(), mainTokenId.getRenewer(), mainTokenId.getRealUser());
     // Set the attributes from the main tokenIdentifier, which are expected by the
     // DelegationTokenIdentifier class.
@@ -81,6 +91,12 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
     this.innerTokens = tokens;
 
     this.tokenVersion = VERSION;
+
+    if (spiffeTokens == null) {
+      spiffeTokens = new Token[0];
+    }
+
+    this.spiffeTokens = spiffeTokens;
   }
 
   @Override
@@ -98,6 +114,11 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
     }
 
     out.writeByte(tokenVersion);
+
+    WritableUtils.writeVInt(out, this.spiffeTokens.length);
+    for (Token spiffeToken : this.spiffeTokens) {
+      spiffeToken.write(out);
+    }
   }
 
   @Override
@@ -138,6 +159,18 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
       this.innerTokens = new Token[0];
       this.tokenVersion = BASE_VERSION;
     }
+
+    if (this.tokenVersion < 1) {
+      this.spiffeTokens = new Token[0];
+    } else {
+      int spiffeTokenLength = WritableUtils.readVInt(in);
+      this.spiffeTokens = new Token[spiffeTokenLength];
+      for (int i = 0; i < spiffeTokenLength; ++i) {
+        Token spiffeToken = new Token();
+        spiffeToken.readFields(in);
+        this.spiffeTokens[i] = spiffeToken;
+      }
+    }
   }
 
   @Override
@@ -158,5 +191,10 @@ public class BundledDelegationTokenIdentifier extends DelegationTokenIdentifier
   @Override
   public Token[] getInnerTokens() {
     return this.innerTokens;
+  }
+
+  @Override
+  public Token[] getSPIFFETokens() {
+    return this.spiffeTokens;
   }
 }
