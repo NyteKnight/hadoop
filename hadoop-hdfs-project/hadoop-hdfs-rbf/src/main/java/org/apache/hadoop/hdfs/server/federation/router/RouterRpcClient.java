@@ -59,7 +59,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAccumulator;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -157,11 +156,9 @@ public class RouterRpcClient {
 
   /** Fairness manager to control handlers assigned per NS. */
   private RouterRpcFairnessPolicyController routerRpcFairnessPolicyController;
-  private Map<String, LongAdder> rejectedPermitsPerNs = new ConcurrentHashMap<>();
-  private Map<String, LongAdder> acceptedPermitsPerNs = new ConcurrentHashMap<>();
 
   private final boolean enableProxyUser;
-  
+
   private final boolean skipClosedConnectionRpc;
 
   /**
@@ -246,7 +243,7 @@ public class RouterRpcClient {
           activeNNStateIdRefreshPeriodMs);
     }
     this.lastActiveNNRefreshTimes = new ConcurrentHashMap<>();
-    
+
     this.skipClosedConnectionRpc = conf.getBoolean(
         RBFConfigKeys.DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED,
         RBFConfigKeys.DFS_ROUTER_CLIENT_SKIP_CLOSED_CONNECTION_RPC_ENABLED_DEFAULT);
@@ -386,23 +383,6 @@ public class RouterRpcClient {
     return connectionManager;
   }
 
-  /**
-   * JSON representation of the rejected permits for each nameservice.
-   *
-   * @return String representation of the rejected permits for each nameservice.
-   */
-  public String getRejectedPermitsPerNsJSON() {
-    return JSON.toString(rejectedPermitsPerNs);
-  }
-
-  /**
-   * JSON representation of the accepted permits for each nameservice.
-   *
-   * @return String representation of the accepted permits for each nameservice.
-   */
-  public String getAcceptedPermitsPerNsJSON() {
-    return JSON.toString(acceptedPermitsPerNs);
-  }
   /**
    * Get ClientProtocol proxy client for a NameNode. Each combination of user +
    * NN must use a unique proxy client. Previously created clients are cached
@@ -550,7 +530,7 @@ public class RouterRpcClient {
         connection = this.getConnection(ugi, nsId, rpcAddress, protocol);
         ProxyAndInfo<?> client = connection.getClient();
         final Object proxy = client.getProxy();
-        
+
         // LIHADOOP-75599: Check to see if the incoming peer is still open before trying to issue the RPC Call.
         if (skipClosedConnectionRpc) {
           final Call curCall = Server.getCurCall().get();
@@ -1682,9 +1662,6 @@ public class RouterRpcClient {
       if (!routerRpcFairnessPolicyController.acquirePermit(nsId)) {
         // Throw StandByException,
         // Clients could fail over and try another router.
-        if (rpcMonitor != null) {
-          rpcMonitor.getRPCMetrics().incrProxyOpPermitRejected();
-        }
         incrRejectedPermitForNs(nsId);
         LOG.debug("Permit denied for ugi: {} for method: {}",
             ugi, m.getMethodName());
@@ -1721,21 +1698,15 @@ public class RouterRpcClient {
   }
 
   private void incrRejectedPermitForNs(String ns) {
-    rejectedPermitsPerNs.computeIfAbsent(ns, k -> new LongAdder()).increment();
-  }
-
-  public Long getRejectedPermitForNs(String ns) {
-    return rejectedPermitsPerNs.containsKey(ns) ?
-        rejectedPermitsPerNs.get(ns).longValue() : 0L;
+    if (rpcMonitor != null) {
+      rpcMonitor.getRPCMetrics().incrRejectedPermitForNs(ns);
+    }
   }
 
   private void incrAcceptedPermitForNs(String ns) {
-    acceptedPermitsPerNs.computeIfAbsent(ns, k -> new LongAdder()).increment();
-  }
-
-  public Long getAcceptedPermitForNs(String ns) {
-    return acceptedPermitsPerNs.containsKey(ns) ?
-        acceptedPermitsPerNs.get(ns).longValue() : 0L;
+    if (rpcMonitor != null) {
+      rpcMonitor.getRPCMetrics().incrAcceptedPermitForNs(ns);
+    }
   }
 
   /**

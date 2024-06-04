@@ -23,6 +23,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
@@ -32,9 +34,11 @@ import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.server.federation.MiniRouterDFSCluster.RouterContext;
 import org.apache.hadoop.hdfs.server.federation.RouterConfigBuilder;
 import org.apache.hadoop.hdfs.server.federation.StateStoreDFSCluster;
+import org.apache.hadoop.hdfs.server.federation.metrics.FederationRPCMetrics;
 import org.apache.hadoop.hdfs.server.federation.router.RBFConfigKeys;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.ipc.StandbyException;
+import org.eclipse.jetty.util.ajax.JSON;
 import org.junit.After;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -79,6 +83,9 @@ public class TestRouterHandlersFairness {
     // fan-out calls have 1 permit.
     routerConf.setInt(RBFConfigKeys.DFS_ROUTER_HANDLER_COUNT_KEY, 3);
 
+    // enable metrics so we can use getRpcMetrics()
+    routerConf.setBoolean(RBFConfigKeys.DFS_ROUTER_METRICS_ENABLE, true);
+
     // Datanodes not needed for this test.
     cluster.setNumDatanodesPerNameservice(0);
 
@@ -98,6 +105,23 @@ public class TestRouterHandlersFairness {
   public void testFairnessControlOn() throws Exception {
     setupCluster(true, false);
     startLoadTest(true);
+  }
+
+  @Test
+  public void testFairnessMetricsSerialization() throws Exception {
+    FederationRPCMetrics metrics = new FederationRPCMetrics(null, null);
+    final Map<String, Long> permitsPerNs = new LinkedHashMap<>();
+
+    for (int i = 0; i < 10; i++) {
+      String ns = "ns" + i;
+      metrics.incrAcceptedPermitForNs(ns);
+      permitsPerNs.put(ns, 1L);
+    }
+
+    final String metricsJson = metrics.getProxyOpPermitAcceptedPerNs();
+    Map<?, ?> deserializedMetrics = (Map<?, ?>) JSON.parse(metricsJson);
+
+    assertEquals("JSON-serialized accepted permits are the same", deserializedMetrics, permitsPerNs);
   }
 
   /**
@@ -200,10 +224,10 @@ public class TestRouterHandlersFairness {
   private int getTotalRejectedPermits(RouterContext routerContext) {
     int totalRejectedPermits = 0;
     for (String ns : cluster.getNameservices()) {
-      totalRejectedPermits += routerContext.getRouterRpcClient()
+      totalRejectedPermits += routerContext.getRouter().getRpcServer().getRPCMetrics()
           .getRejectedPermitForNs(ns);
     }
-    totalRejectedPermits += routerContext.getRouterRpcClient()
+    totalRejectedPermits += routerContext.getRouter().getRpcServer().getRPCMetrics()
         .getRejectedPermitForNs(RouterRpcFairnessConstants.CONCURRENT_NS);
     return totalRejectedPermits;
   }
@@ -211,10 +235,10 @@ public class TestRouterHandlersFairness {
   private int getTotalAcceptedPermits(RouterContext routerContext) {
     int totalAcceptedPermits = 0;
     for (String ns : cluster.getNameservices()) {
-      totalAcceptedPermits += routerContext.getRouterRpcClient()
+      totalAcceptedPermits += routerContext.getRouter().getRpcServer().getRPCMetrics()
           .getAcceptedPermitForNs(ns);
     }
-    totalAcceptedPermits += routerContext.getRouterRpcClient()
+    totalAcceptedPermits += routerContext.getRouter().getRpcServer().getRPCMetrics()
         .getAcceptedPermitForNs(RouterRpcFairnessConstants.CONCURRENT_NS);
     return totalAcceptedPermits;
   }

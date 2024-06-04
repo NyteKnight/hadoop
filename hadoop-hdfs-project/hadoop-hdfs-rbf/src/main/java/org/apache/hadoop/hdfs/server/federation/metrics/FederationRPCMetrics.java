@@ -20,9 +20,14 @@ package org.apache.hadoop.hdfs.server.federation.metrics;
 import static org.apache.hadoop.metrics2.impl.MsInfo.ProcessName;
 import static org.apache.hadoop.metrics2.impl.MsInfo.SessionId;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.federation.resolver.FederationNamenodeServiceState;
 import org.apache.hadoop.hdfs.server.federation.router.RouterRpcServer;
+import org.apache.hadoop.metrics2.MetricsCollector;
+import org.apache.hadoop.metrics2.MetricsSource;
 import org.apache.hadoop.metrics2.MetricsSystem;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
@@ -30,13 +35,15 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MetricsRegistry;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
 import org.apache.hadoop.metrics2.lib.MutableRate;
+import org.eclipse.jetty.util.ajax.JSON;
+
 
 /**
  * Implementation of the RPC metrics collector.
  */
 @Metrics(name = "RouterRPCActivity", about = "Router RPC Activity",
     context = "dfs")
-public class FederationRPCMetrics implements FederationRPCMBean {
+public class FederationRPCMetrics implements FederationRPCMBean, MetricsSource {
 
   private final MetricsRegistry registry = new MetricsRegistry("router");
 
@@ -78,9 +85,19 @@ public class FederationRPCMetrics implements FederationRPCMBean {
 
   @Metric("Number of operations to hit permit limits")
   private MutableCounterLong proxyOpPermitRejected;
-  
+
   @Metric("Number of RPCs skipped due to incoming peer closing its Connection Channel prior to RPC invocation")
   private MutableCounterLong skippedProxyOpPeerClosedChannel;
+
+  private Map<String, MutableCounterLong> rejectedPermitsPerNs = new ConcurrentHashMap<>();
+  private Map<String, MutableCounterLong> acceptedPermitsPerNs = new ConcurrentHashMap<>();
+
+  private static final String ACCEPTED_PERMIT_COUNTER_NAME = "acceptedPermitsForNN.";
+  private static final String ACCEPTED_PERMIT_COUNTER_DESCRIPTION = "Number of accepted permits for NN ";
+
+  private static final String REJECTED_PERMIT_COUNTER_NAME = "rejectedPermitsForNN.";
+  private static final String REJECTED_PERMIT_COUNTER_DESCRIPTION = "Number of rejected permits for NN ";
+  private final MetricsRegistry metricsRegistry = new MetricsRegistry("metrics");
 
   public FederationRPCMetrics(Configuration conf, RouterRpcServer rpcServer) {
     this.rpcServer = rpcServer;
@@ -307,31 +324,59 @@ public class FederationRPCMetrics implements FederationRPCMBean {
     return processingOp.value();
   }
 
-  public void incrProxyOpPermitRejected() {
-    proxyOpPermitRejected.incr();
-  }
-
   @Override
   public long getProxyOpPermitRejected() {
     return proxyOpPermitRejected.value();
   }
 
+  public void incrRejectedPermitForNs(String ns) {
+    rejectedPermitsPerNs.computeIfAbsent(ns,
+            k -> metricsRegistry.newCounter(REJECTED_PERMIT_COUNTER_NAME + k, REJECTED_PERMIT_COUNTER_DESCRIPTION + k, 0L))
+        .incr();
+    proxyOpPermitRejected.incr();
+  }
+
+  public Long getRejectedPermitForNs(String ns) {
+    return rejectedPermitsPerNs.containsKey(ns) ?
+        rejectedPermitsPerNs.get(ns).value() : 0L;
+  }
+
   @Override
   public String getProxyOpPermitRejectedPerNs() {
-    return rpcServer.getRPCClient().getRejectedPermitsPerNsJSON();
+    final Map<String, Long> info = new LinkedHashMap<>();
+    rejectedPermitsPerNs.forEach((k,v) -> info.put(k, v.value()));
+    return JSON.toString(info);
+  }
+
+  public void incrAcceptedPermitForNs(String ns) {
+    acceptedPermitsPerNs.computeIfAbsent(ns,
+            k -> metricsRegistry.newCounter(ACCEPTED_PERMIT_COUNTER_NAME + k, ACCEPTED_PERMIT_COUNTER_DESCRIPTION + k, 0L))
+        .incr();
+  }
+
+  public Long getAcceptedPermitForNs(String ns) {
+    return acceptedPermitsPerNs.containsKey(ns) ?
+        acceptedPermitsPerNs.get(ns).value() : 0L;
   }
 
   @Override
   public String getProxyOpPermitAcceptedPerNs() {
-    return rpcServer.getRPCClient().getAcceptedPermitsPerNsJSON();
+    final Map<String, Long> info = new LinkedHashMap<>();
+    acceptedPermitsPerNs.forEach((k,v) -> info.put(k, v.value()));
+    return JSON.toString(info);
   }
 
   public void incrSkippedProxyOpPeerClosedChannel() {
     skippedProxyOpPeerClosedChannel.incr();
   }
-  
+
   @Override
   public long getSkippedProxyOpPeerClosedChannel() {
     return skippedProxyOpPeerClosedChannel.value();
+  }
+
+  @Override
+  public void getMetrics(MetricsCollector collector, boolean all) {
+    metricsRegistry.snapshot(collector.addRecord(registry.info()), all);
   }
 }
