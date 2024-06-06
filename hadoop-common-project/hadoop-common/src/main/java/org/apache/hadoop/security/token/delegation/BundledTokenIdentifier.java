@@ -20,7 +20,4 @@ public interface BundledTokenIdentifier {
   
   // The bundled information for additional tokens.
   Token[] getInnerTokens();
-
-  // The SPIFFE tokens
-  Token[] getSPIFFETokens();
 }
